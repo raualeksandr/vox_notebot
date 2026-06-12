@@ -69,3 +69,30 @@ def transcription_actions_keyboard(transcription_id: int) -> InlineKeyboardMarku
             ],
         ]
     )
+
+
+def history_transcription_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📄 Текст",
+                    callback_data=f"history:text:{transcription_id}",
+                ),
+                InlineKeyboardButton(
+                    text="🧹 Очистить",
+                    callback_data=f"text:clean:{transcription_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📝 Summary",
+                    callback_data=f"text:summary:{transcription_id}",
+                ),
+                InlineKeyboardButton(
+                    text="✅ Задачи",
+                    callback_data=f"text:tasks:{transcription_id}",
+                ),
+            ],
+        ]
+    )

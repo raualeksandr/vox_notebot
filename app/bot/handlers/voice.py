@@ -13,6 +13,7 @@ from openai import OpenAIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.keyboards.user import transcription_actions_keyboard
+from app.bot.message_utils import answer_text_chunks, send_text_chunks
 from app.config import get_settings
 from app.db.models import Transcription
 from app.services.billing import (
@@ -22,43 +23,18 @@ from app.services.billing import (
 )
 from app.services.openai_client import OpenAIKeyNotConfiguredError
 from app.services.text_processing import clean_text, extract_tasks, summarize_text
-from app.services.transcription import transcribe_audio
+from app.services.transcription import get_user_transcription, transcribe_audio
 from app.services.users import get_or_create_user, get_user_by_telegram_id
 
 
 logger = logging.getLogger(__name__)
 router = Router(name="voice")
-TELEGRAM_MESSAGE_CHUNK_SIZE = 4000
 
 TextProcessor = Callable[[str], Awaitable[str]]
 
 
 def _format_minutes(value: Decimal) -> str:
     return f"{value.normalize():f}"
-
-
-def _split_text(text: str, chunk_size: int = TELEGRAM_MESSAGE_CHUNK_SIZE) -> list[str]:
-    chunks: list[str] = []
-    remaining = text.strip()
-
-    while len(remaining) > chunk_size:
-        split_at = remaining.rfind("\n", 0, chunk_size)
-        if split_at < chunk_size // 2:
-            split_at = remaining.rfind(" ", 0, chunk_size)
-        if split_at < chunk_size // 2:
-            split_at = chunk_size
-
-        chunks.append(remaining[:split_at].strip())
-        remaining = remaining[split_at:].strip()
-
-    if remaining:
-        chunks.append(remaining)
-    return chunks
-
-
-async def _send_text_chunks(message: Message, text: str) -> None:
-    for chunk in _split_text(text):
-        await message.answer(chunk)
 
 
 @router.message(F.voice)
@@ -171,7 +147,7 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
             f"Готово. Списано {required_minutes} мин. "
             f"Остаток: {_format_minutes(balance.minutes_remaining)} мин."
         )
-        await _send_text_chunks(message, transcript_text)
+        await answer_text_chunks(message, transcript_text)
         await message.answer(
             "Что сделать с транскрипцией?",
             reply_markup=transcription_actions_keyboard(transcription.id),
@@ -196,15 +172,17 @@ async def process_transcription_text(
 
     action = callback_parts[1]
     transcription_id = int(callback_parts[2])
-    transcription = await session.get(Transcription, transcription_id)
     user = await get_user_by_telegram_id(session, callback.from_user.id)
-    if (
-        transcription is None
-        or user is None
-        or transcription.user_id != user.id
-        or transcription.status != "completed"
-        or not transcription.transcript_text
-    ):
+    if user is None:
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    transcription = await get_user_transcription(
+        session,
+        transcription_id,
+        user.id,
+    )
+    if transcription is None or not transcription.transcript_text:
         await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
         return
 
@@ -230,5 +208,4 @@ async def process_transcription_text(
         return
 
     await callback.bot.send_message(callback.from_user.id, title)
-    for chunk in _split_text(result):
-        await callback.bot.send_message(callback.from_user.id, chunk)
+    await send_text_chunks(callback.bot, callback.from_user.id, result)
