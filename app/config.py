@@ -1,4 +1,5 @@
 from functools import lru_cache
+from decimal import Decimal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,6 +37,14 @@ class Settings(BaseSettings):
     power_package_minutes: int = Field(
         default=1000,
         alias="POWER_PACKAGE_MINUTES",
+    )
+    friends_package_price: Decimal = Field(
+        default=Decimal("0"),
+        alias="FRIENDS_PACKAGE_PRICE",
+    )
+    power_package_price: Decimal = Field(
+        default=Decimal("0"),
+        alias="POWER_PACKAGE_PRICE",
     )
 
     transcription_model: str = Field(

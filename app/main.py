@@ -4,7 +4,9 @@ import logging
 from aiogram import Bot, Dispatcher
 
 from app.bot.router import router
+from app.bot.middlewares.database import DatabaseSessionMiddleware
 from app.config import get_settings
+from app.db.session import create_session_factory
 
 
 async def main() -> None:
@@ -14,6 +16,9 @@ async def main() -> None:
 
     bot = Bot(token=settings.bot_token)
     dispatcher = Dispatcher()
+    dispatcher.update.middleware(
+        DatabaseSessionMiddleware(create_session_factory(settings))
+    )
     dispatcher.include_router(router)
 
     try:
@@ -25,4 +30,3 @@ async def main() -> None:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
-

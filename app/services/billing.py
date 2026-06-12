@@ -195,6 +195,37 @@ async def get_pending_payments(session: AsyncSession) -> list[Payment]:
     return list(result.scalars().all())
 
 
+async def get_payment(session: AsyncSession, payment_id: int) -> Payment | None:
+    return await session.get(Payment, payment_id)
+
+
+async def get_recent_balance_transactions(
+    session: AsyncSession,
+    user_id: int,
+    *,
+    limit: int = 3,
+) -> list[BalanceTransaction]:
+    result = await session.execute(
+        select(BalanceTransaction)
+        .where(BalanceTransaction.user_id == user_id)
+        .order_by(BalanceTransaction.created_at.desc(), BalanceTransaction.id.desc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def has_free_grant(session: AsyncSession, user_id: int) -> bool:
+    result = await session.execute(
+        select(BalanceTransaction.id)
+        .where(
+            BalanceTransaction.user_id == user_id,
+            BalanceTransaction.type == "free_grant",
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 async def _get_payment_for_update(
     session: AsyncSession,
     payment_id: int,

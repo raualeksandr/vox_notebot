@@ -18,4 +18,3 @@ async def session_scope(
 ) -> AsyncIterator[AsyncSession]:
     async with session_factory() as session:
         yield session
-

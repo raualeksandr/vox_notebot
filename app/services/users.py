@@ -17,6 +17,10 @@ async def get_user_by_telegram_id(
     return result.scalar_one_or_none()
 
 
+async def get_user_by_id(session: AsyncSession, user_id: int) -> User | None:
+    return await session.get(User, user_id)
+
+
 async def get_user_by_username(
     session: AsyncSession,
     username: str,
