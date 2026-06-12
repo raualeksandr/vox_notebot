@@ -72,3 +72,16 @@ python -m app.main
 Доступны stub-команды `/start`, `/help`, `/balance`, `/buy` и `/admin`.
 Реальная OpenAI-транскрибация будет подключена на следующем этапе.
 
+## Миграции базы данных
+
+После заполнения `DATABASE_URL` примените начальную миграцию:
+
+```bash
+alembic upgrade head
+```
+
+При изменении SQLAlchemy-моделей новую миграцию можно создать командой:
+
+```bash
+alembic revision --autogenerate -m "describe change"
+```
