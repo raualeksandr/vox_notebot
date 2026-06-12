@@ -7,6 +7,7 @@ from app.bot.router import router
 from app.bot.middlewares.database import DatabaseSessionMiddleware
 from app.config import get_settings
 from app.db.session import create_session_factory
+from app.services.openai_client import close_openai_client
 
 
 async def main() -> None:
@@ -24,6 +25,7 @@ async def main() -> None:
     try:
         await dispatcher.start_polling(bot)
     finally:
+        await close_openai_client()
         await bot.session.close()
 
 

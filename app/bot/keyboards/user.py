@@ -46,3 +46,26 @@ def payment_claim_keyboard(payment_id: int) -> InlineKeyboardMarkup:
             ]
         ]
     )
+
+
+def transcription_actions_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🧹 Очистить",
+                    callback_data=f"text:clean:{transcription_id}",
+                ),
+                InlineKeyboardButton(
+                    text="📝 Summary",
+                    callback_data=f"text:summary:{transcription_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="✅ Задачи",
+                    callback_data=f"text:tasks:{transcription_id}",
+                )
+            ],
+        ]
+    )
