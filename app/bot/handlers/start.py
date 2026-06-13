@@ -3,6 +3,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.keyboards.user import user_menu_keyboard
 from app.config import get_settings
 from app.services.billing import get_or_create_balance
 from app.services.users import get_or_create_user
@@ -34,6 +35,10 @@ async def start_command(message: Message, session: AsyncSession) -> None:
         "На текущем этапе транскрибация работает как заглушка.\n\n"
         "Используйте /balance для проверки минут и /buy для выбора пакета."
     )
+    await message.answer(
+        "Используйте кнопки меню ниже.",
+        reply_markup=user_menu_keyboard(is_admin=settings.is_admin(telegram_user.id)),
+    )
 
 
 @router.message(Command("help"))
@@ -46,4 +51,13 @@ async def help_command(message: Message) -> None:
         "/admin - меню администратора, доступное только администраторам\n\n"
         "После транскрибации можно очистить текст, получить Summary "
         "или выделить задачи."
+    )
+    telegram_user = message.from_user
+    await message.answer(
+        "Меню команд:",
+        reply_markup=user_menu_keyboard(
+            is_admin=bool(
+                telegram_user and get_settings().is_admin(telegram_user.id)
+            )
+        ),
     )

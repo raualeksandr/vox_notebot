@@ -1,6 +1,33 @@
 from decimal import Decimal
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+)
+
+
+def user_menu_keyboard(*, is_admin: bool = False) -> ReplyKeyboardMarkup:
+    keyboard = [
+        [KeyboardButton(text="🎙 Отправить voice")],
+        [
+            KeyboardButton(text="📚 История"),
+            KeyboardButton(text="💰 Баланс"),
+        ],
+        [
+            KeyboardButton(text="🛒 Купить минуты"),
+            KeyboardButton(text="❓ Помощь"),
+        ],
+    ]
+    if is_admin:
+        keyboard.append([KeyboardButton(text="⚙️ Админка")])
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        is_persistent=True,
+    )
 
 
 def packages_keyboard(
