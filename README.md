@@ -103,3 +103,42 @@ python -m app.main
    сообщить, что ключ не настроен, не списывая минуты.
 
 Bear export и Telegram Stars пока не подключены.
+
+## Deploy to Railway
+
+1. Загрузите проект в GitHub, не добавляя локальный файл `.env`.
+2. В Railway создайте новый Service из GitHub-репозитория проекта.
+3. Railway использует команду запуска из `railway.toml`:
+
+```bash
+python -m app.main
+```
+
+4. Добавьте в Railway Variables необходимые переменные окружения:
+
+```text
+BOT_TOKEN
+OPENAI_API_KEY
+DATABASE_URL
+ADMIN_TELEGRAM_IDS
+SBP_PHONE
+SBP_BANK_NAME
+SBP_RECIPIENT_NAME
+SBP_PAYMENT_COMMENT
+DEFAULT_FREE_MINUTES
+FRIENDS_PACKAGE_MINUTES
+POWER_PACKAGE_MINUTES
+FRIENDS_PACKAGE_PRICE
+POWER_PACKAGE_PRICE
+TRANSCRIPTION_MODEL
+TEXT_MODEL
+```
+
+5. Перед запуском сервиса примените Alembic-миграции к Railway PostgreSQL:
+
+```bash
+alembic upgrade head
+```
+
+Файл `.env` нельзя коммитить в GitHub. Токены, ключи, URL базы данных и другие
+секреты добавляйте только через раздел Railway Variables.
