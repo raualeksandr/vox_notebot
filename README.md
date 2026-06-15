@@ -40,7 +40,11 @@ cp .env.example .env
 - `ADMIN_TELEGRAM_IDS` - Telegram ID администраторов через запятую.
 - `OPENAI_API_KEY` - API key для транскрибации и обработки текста.
 - `TRANSCRIPTION_MODEL` - модель транскрибации, по умолчанию
-  `gpt-4o-mini-transcribe`.
+  `gpt-4o-mini-transcribe`. Оставлена для обратной совместимости.
+- `TRANSCRIPTION_MODEL_FAST` - быстрая модель транскрибации. Если не задана,
+  используется `TRANSCRIPTION_MODEL` или `gpt-4o-mini-transcribe`.
+- `TRANSCRIPTION_MODEL_PREMIUM` - будущая premium-модель транскрибации, по
+  умолчанию `gpt-4o-transcribe`.
 - `TEXT_MODEL` - модель для Clean/Summary/Tasks, по умолчанию
   `gpt-5.4-nano`.
 - Параметры `SBP_*` и цены пакетов - настройки ручной оплаты.
@@ -57,6 +61,28 @@ postgresql+asyncpg://postgres:password@localhost:5432/voice_notes_bot
 
 Бот запускается без `OPENAI_API_KEY`. В этом случае команды и админка доступны,
 а при отправке voice-сообщения бот сообщает, что транскрибация не настроена.
+
+## Profiles and plans architecture
+
+В коде заложена архитектура профилей, тарифов и будущего выбора качества
+транскрибации без изменения текущего пользовательского flow.
+
+Планы описаны в `app/services/plans.py`:
+
+- `free` - 30 минут, fast transcription, Clean/Summary/History.
+- `personal` - 300 минут, fast transcription, Clean/Summary/Tasks/History.
+- `professional` - 600 минут, fast transcription, расширенные рабочие сценарии
+  и право на future premium rerun.
+- `premium` - 1000 минут, premium transcription и все известные features.
+
+Профили также описаны в `app/services/plans.py`: `hr_assessor`, `pm_ba`,
+`founder`, `student_researcher`, `personal_notes`. У каждого профиля есть label,
+набор default features и recommended plan.
+
+Premium transcription пока является future option: helper
+`get_transcription_model_for_user()` умеет выбирать fast или premium модель по
+`User.transcription_quality` и `User.current_plan`, но текущий voice handler
+продолжает использовать прежнюю модель транскрибации по умолчанию.
 
 ## Миграции
 
@@ -131,6 +157,8 @@ POWER_PACKAGE_MINUTES
 FRIENDS_PACKAGE_PRICE
 POWER_PACKAGE_PRICE
 TRANSCRIPTION_MODEL
+TRANSCRIPTION_MODEL_FAST
+TRANSCRIPTION_MODEL_PREMIUM
 TEXT_MODEL
 ```
 

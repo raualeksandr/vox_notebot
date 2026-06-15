@@ -1,7 +1,7 @@
 from functools import lru_cache
 from decimal import Decimal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -51,6 +51,14 @@ class Settings(BaseSettings):
         default="gpt-4o-mini-transcribe",
         alias="TRANSCRIPTION_MODEL",
     )
+    transcription_model_fast: str = Field(
+        default="",
+        alias="TRANSCRIPTION_MODEL_FAST",
+    )
+    transcription_model_premium: str = Field(
+        default="gpt-4o-transcribe",
+        alias="TRANSCRIPTION_MODEL_PREMIUM",
+    )
     text_model: str = Field(default="gpt-5.4-nano", alias="TEXT_MODEL")
 
     @field_validator("admin_telegram_ids", mode="before")
@@ -61,6 +69,16 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [int(item.strip()) for item in value.split(",") if item.strip()]
         return value
+
+    @model_validator(mode="after")
+    def set_transcription_model_fallbacks(self) -> "Settings":
+        if not self.transcription_model_fast.strip():
+            self.transcription_model_fast = (
+                self.transcription_model.strip() or "gpt-4o-mini-transcribe"
+            )
+        if not self.transcription_model_premium.strip():
+            self.transcription_model_premium = "gpt-4o-transcribe"
+        return self
 
     def is_admin(self, telegram_id: int) -> bool:
         return telegram_id in self.admin_telegram_ids

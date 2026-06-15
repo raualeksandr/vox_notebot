@@ -20,6 +20,9 @@ class User(Base):
     language_code: Mapped[str | None] = mapped_column(String(16))
     role: Mapped[str] = mapped_column(String(32), default="user")
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
+    current_plan: Mapped[str] = mapped_column(String(32), default="free")
+    transcription_quality: Mapped[str] = mapped_column(String(32), default="fast")
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -33,6 +36,36 @@ class User(Base):
     transcriptions: Mapped[list["Transcription"]] = relationship(
         back_populates="user"
     )
+    profile: Mapped["UserProfile | None"] = relationship(
+        back_populates="user",
+        uselist=False,
+    )
+
+
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
+    profile_type: Mapped[str | None] = mapped_column(String(64))
+    primary_goal: Mapped[str | None] = mapped_column(String(255))
+    preferred_output: Mapped[str | None] = mapped_column(String(255))
+    audio_source: Mapped[str | None] = mapped_column(String(255))
+    quality_preference: Mapped[str | None] = mapped_column(String(32))
+    usage_frequency: Mapped[str | None] = mapped_column(String(64))
+    recommended_plan: Mapped[str | None] = mapped_column(String(32))
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    user: Mapped[User] = relationship(back_populates="profile")
 
 
 class Balance(Base):
