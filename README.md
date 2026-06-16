@@ -85,6 +85,18 @@ Premium transcription пока является future option: helper
 `User.transcription_quality` и `User.current_plan`, но текущий voice handler
 продолжает использовать прежнюю модель транскрибации по умолчанию.
 
+## Onboarding scoring service
+
+Сервис `app/services/onboarding.py` содержит rule-based scoring для будущего
+onboarding questionnaire: определяет профиль пользователя, рекомендует тариф,
+выбирает рекомендованный режим качества и формирует русскоязычное summary.
+Он также умеет создавать или обновлять `UserProfile` через
+`upsert_user_profile()`.
+
+Telegram flow, FSM и пользовательские команды для onboarding будут добавлены
+следующим шагом. Текущие `/start`, меню, voice flow и billing этот сервис не
+меняет.
+
 ## Миграции
 
 Применить миграции:
