@@ -1,5 +1,40 @@
+from openai import BadRequestError
+
 from app.config import get_settings
 from app.services.openai_client import get_openai_client
+
+
+TEXT_PROCESSING_GUARDRAILS = """
+Правила ответа:
+- Верни только результат обработки по заданному формату.
+- Не обращайся к пользователю напрямую.
+- Не используй фразы вроде: "если хочешь", "могу", "давай", "конечно", "вот", "ниже".
+- Не предлагай дополнительные действия от лица ассистента.
+- Не добавляй conversational closing lines.
+- Не добавляй факты, которых нет в исходной заметке.
+- Если данных недостаточно, пиши "Недостаточно данных" в соответствующем разделе.
+- Не выходи за рамки выбранного формата.
+""".strip()
+
+CONVERSATIONAL_TAIL_PREFIXES = (
+    "Если хочешь",
+    "Если хотите",
+    "Могу",
+    "Давай",
+    "Хотите",
+    "При необходимости могу",
+    "Могу также",
+)
+
+
+def remove_conversational_tail(text: str) -> str:
+    lines = text.rstrip().splitlines()
+    normalized_prefixes = tuple(
+        prefix.casefold() for prefix in CONVERSATIONAL_TAIL_PREFIXES
+    )
+    while lines and lines[-1].lstrip().casefold().startswith(normalized_prefixes):
+        lines.pop()
+    return "\n".join(lines).rstrip()
 
 
 async def _process_text(text: str, instructions: str) -> str:
@@ -9,12 +44,25 @@ async def _process_text(text: str, instructions: str) -> str:
 
     settings = get_settings()
     client = get_openai_client()
-    response = await client.responses.create(
-        model=settings.text_model,
-        instructions=instructions,
-        input=source_text,
-    )
-    result = response.output_text.strip()
+    guarded_instructions = f"{instructions}\n\n{TEXT_PROCESSING_GUARDRAILS}"
+    request = {
+        "model": settings.text_model,
+        "instructions": guarded_instructions,
+        "input": source_text,
+        "temperature": 0.2,
+    }
+    try:
+        response = await client.responses.create(**request)
+    except TypeError:
+        request.pop("temperature", None)
+        response = await client.responses.create(**request)
+    except BadRequestError as error:
+        if "temperature" not in str(error).casefold():
+            raise
+        request.pop("temperature", None)
+        response = await client.responses.create(**request)
+
+    result = remove_conversational_tail(response.output_text.strip())
     if not result:
         raise RuntimeError("OpenAI returned an empty text result.")
     return result
