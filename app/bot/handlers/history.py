@@ -12,7 +12,7 @@ from app.services.transcription import (
     get_recent_transcriptions,
     get_user_transcription,
 )
-from app.services.users import get_or_create_user, get_user_by_telegram_id
+from app.services.users import get_or_create_user, get_user_by_telegram_id, get_user_profile
 
 
 router = Router(name="history")
@@ -45,6 +45,10 @@ async def history_command(message: Message, session: AsyncSession) -> None:
         await message.answer("У вас пока нет транскрипций.")
         return
 
+    user_profile = await get_user_profile(session, user.id)
+    include_hr_actions = (
+        user_profile is not None and user_profile.profile_type == "hr_assessor"
+    )
     await message.answer("Ваши последние транскрипции:")
     for transcription in transcriptions:
         duration_minutes = max(
@@ -56,7 +60,10 @@ async def history_command(message: Message, session: AsyncSession) -> None:
             f"{created_at}\n"
             f"Длительность: {duration_minutes} мин.\n"
             f"{_preview(transcription.transcript_text or '')}",
-            reply_markup=history_transcription_keyboard(transcription.id),
+            reply_markup=history_transcription_keyboard(
+                transcription.id,
+                include_hr_actions=include_hr_actions,
+            ),
         )
 
 

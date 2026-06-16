@@ -4,7 +4,7 @@ from aiogram.types import User as TelegramUser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import User
+from app.db.models import User, UserProfile
 
 
 async def get_user_by_telegram_id(
@@ -19,6 +19,16 @@ async def get_user_by_telegram_id(
 
 async def get_user_by_id(session: AsyncSession, user_id: int) -> User | None:
     return await session.get(User, user_id)
+
+
+async def get_user_profile(
+    session: AsyncSession,
+    user_id: int,
+) -> UserProfile | None:
+    result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user_id)
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_user_by_username(

@@ -78,79 +78,120 @@ def payment_claim_keyboard(payment_id: int) -> InlineKeyboardMarkup:
     )
 
 
-def transcription_actions_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
+def _hr_action_rows(transcription_id: int) -> list[list[InlineKeyboardButton]]:
+    return [
+        [
+            InlineKeyboardButton(
+                text="📋 HR Summary",
+                callback_data=f"hr_summary:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🧠 Competency Notes",
+                callback_data=f"competency_notes:{transcription_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="⚖️ Evidence",
+                callback_data=f"evidence:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🧾 HR Report",
+                callback_data=f"hr_report:{transcription_id}",
+            ),
+        ],
+    ]
+
+
+def transcription_actions_keyboard(
+    transcription_id: int,
+    *,
+    include_hr_actions: bool = False,
+) -> InlineKeyboardMarkup:
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text="🧹 Очистить",
+                callback_data=f"text:clean:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="📝 Summary",
+                callback_data=f"text:summary:{transcription_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="✅ Задачи",
+                callback_data=f"text:tasks:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🔍 Ключевые мысли",
+                callback_data=f"key_points:{transcription_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="❓ Вопросы",
+                callback_data=f"questions:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="📌 Следующие шаги",
+                callback_data=f"next_steps:{transcription_id}",
+            )
+        ],
+    ]
+    if include_hr_actions:
+        inline_keyboard.extend(_hr_action_rows(transcription_id))
+
     return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🧹 Очистить",
-                    callback_data=f"text:clean:{transcription_id}",
-                ),
-                InlineKeyboardButton(
-                    text="📝 Summary",
-                    callback_data=f"text:summary:{transcription_id}",
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="✅ Задачи",
-                    callback_data=f"text:tasks:{transcription_id}",
-                ),
-                InlineKeyboardButton(
-                    text="🔍 Ключевые мысли",
-                    callback_data=f"key_points:{transcription_id}",
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="❓ Вопросы",
-                    callback_data=f"questions:{transcription_id}",
-                ),
-                InlineKeyboardButton(
-                    text="📌 Следующие шаги",
-                    callback_data=f"next_steps:{transcription_id}",
-                )
-            ],
-        ]
+        inline_keyboard=inline_keyboard,
     )
 
 
-def history_transcription_keyboard(transcription_id: int) -> InlineKeyboardMarkup:
+def history_transcription_keyboard(
+    transcription_id: int,
+    *,
+    include_hr_actions: bool = False,
+) -> InlineKeyboardMarkup:
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text="📄 Текст",
+                callback_data=f"history:text:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🧹 Очистить",
+                callback_data=f"text:clean:{transcription_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="📝 Summary",
+                callback_data=f"text:summary:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="✅ Задачи",
+                callback_data=f"text:tasks:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🔍 Мысли",
+                callback_data=f"key_points:{transcription_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="❓ Вопросы",
+                callback_data=f"questions:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="📌 Шаги",
+                callback_data=f"next_steps:{transcription_id}",
+            ),
+        ],
+    ]
+    if include_hr_actions:
+        inline_keyboard.extend(_hr_action_rows(transcription_id))
+
     return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="📄 Текст",
-                    callback_data=f"history:text:{transcription_id}",
-                ),
-                InlineKeyboardButton(
-                    text="🧹 Очистить",
-                    callback_data=f"text:clean:{transcription_id}",
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="📝 Summary",
-                    callback_data=f"text:summary:{transcription_id}",
-                ),
-                InlineKeyboardButton(
-                    text="✅ Задачи",
-                    callback_data=f"text:tasks:{transcription_id}",
-                ),
-                InlineKeyboardButton(
-                    text="🔍 Мысли",
-                    callback_data=f"key_points:{transcription_id}",
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="❓ Вопросы",
-                    callback_data=f"questions:{transcription_id}",
-                ),
-                InlineKeyboardButton(
-                    text="📌 Шаги",
-                    callback_data=f"next_steps:{transcription_id}",
-                ),
-            ],
-        ]
+        inline_keyboard=inline_keyboard,
     )
