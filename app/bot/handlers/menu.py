@@ -14,7 +14,7 @@ from app.bot.handlers.start import help_command
 router = Router(name="menu")
 
 
-@router.message(F.text == "🎙 Отправить voice")
+@router.message(F.text == "🎙 Отправить голосовое")
 async def voice_hint(message: Message) -> None:
     await message.answer(
         "Нажмите на микрофон в Telegram и отправьте голосовое сообщение. "

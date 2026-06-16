@@ -6,6 +6,19 @@ from app.config import get_settings
 PlanConfig = dict[str, Any]
 ProfileConfig = dict[str, Any]
 
+FEATURE_DISPLAY_LABELS = {
+    "clean": "Очистить",
+    "summary": "Саммари",
+    "tasks": "Задачи",
+    "key_points": "Ключевые мысли",
+    "questions": "Вопросы",
+    "next_steps": "Следующие шаги",
+    "hr_summary": "HR-саммари",
+    "competency_notes": "Компетенции",
+    "evidence": "Факты / интерпретации",
+    "hr_report": "HR-отчёт",
+}
+
 CORE_FEATURES = [
     "clean",
     "summary",
@@ -90,7 +103,7 @@ PROFILES: dict[str, ProfileConfig] = {
         "recommended_plan": "professional",
     },
     "pm_ba": {
-        "label": "PM / Business Analyst",
+        "label": "PM / бизнес-аналитик",
         "default_features": [
             "clean",
             "summary",
@@ -104,7 +117,7 @@ PROFILES: dict[str, ProfileConfig] = {
         "recommended_plan": "professional",
     },
     "founder": {
-        "label": "Founder / entrepreneur",
+        "label": "Основатель / предприниматель",
         "default_features": [
             "clean",
             "summary",
@@ -117,7 +130,7 @@ PROFILES: dict[str, ProfileConfig] = {
         "recommended_plan": "professional",
     },
     "student_researcher": {
-        "label": "Student / researcher",
+        "label": "Студент / исследователь",
         "default_features": [
             "clean",
             "summary",
@@ -128,7 +141,7 @@ PROFILES: dict[str, ProfileConfig] = {
         "recommended_plan": "personal",
     },
     "personal_notes": {
-        "label": "Personal notes",
+        "label": "Личные заметки",
         "default_features": ["clean", "summary", "tasks", "history"],
         "recommended_plan": "personal",
     },

@@ -107,7 +107,7 @@ async def _send_output_question(callback: CallbackQuery, state: FSMContext) -> N
             "output",
             [
                 ("Только аккуратный текст", "clean_text"),
-                ("Краткое summary", "summary"),
+                ("Краткое саммари", "summary"),
                 ("Список задач", "tasks"),
                 ("Структурированный отчёт", "structured_report"),
                 ("Требования / user stories", "requirements"),
@@ -311,6 +311,6 @@ async def onboarding_continue_callback(
     await state.clear()
     _, is_admin = await _get_or_create_current_user(callback, session)
     await callback.message.answer(
-        "Готово. Можно отправлять voice-сообщение.",
+        "Готово. Можно отправлять голосовое сообщение.",
         reply_markup=user_menu_keyboard(is_admin=is_admin),
     )

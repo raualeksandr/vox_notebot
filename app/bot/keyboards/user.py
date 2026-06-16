@@ -10,7 +10,7 @@ from aiogram.types import (
 
 def user_menu_keyboard(*, is_admin: bool = False) -> ReplyKeyboardMarkup:
     keyboard = [
-        [KeyboardButton(text="🎙 Отправить voice")],
+        [KeyboardButton(text="🎙 Отправить голосовое")],
         [
             KeyboardButton(text="📚 История"),
             KeyboardButton(text="💰 Баланс"),
@@ -82,21 +82,21 @@ def _hr_action_rows(transcription_id: int) -> list[list[InlineKeyboardButton]]:
     return [
         [
             InlineKeyboardButton(
-                text="📋 HR Summary",
+                text="📋 HR-саммари",
                 callback_data=f"hr_summary:{transcription_id}",
             ),
             InlineKeyboardButton(
-                text="🧠 Competency Notes",
+                text="🧠 Компетенции",
                 callback_data=f"competency_notes:{transcription_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                text="⚖️ Evidence",
+                text="⚖️ Факты / интерпретации",
                 callback_data=f"evidence:{transcription_id}",
             ),
             InlineKeyboardButton(
-                text="🧾 HR Report",
+                text="🧾 HR-отчёт",
                 callback_data=f"hr_report:{transcription_id}",
             ),
         ],
@@ -115,7 +115,7 @@ def transcription_actions_keyboard(
                 callback_data=f"text:clean:{transcription_id}",
             ),
             InlineKeyboardButton(
-                text="📝 Summary",
+                text="📝 Саммари",
                 callback_data=f"text:summary:{transcription_id}",
             ),
         ],
@@ -166,7 +166,7 @@ def history_transcription_keyboard(
         ],
         [
             InlineKeyboardButton(
-                text="📝 Summary",
+                text="📝 Саммари",
                 callback_data=f"text:summary:{transcription_id}",
             ),
             InlineKeyboardButton(
@@ -174,7 +174,7 @@ def history_transcription_keyboard(
                 callback_data=f"text:tasks:{transcription_id}",
             ),
             InlineKeyboardButton(
-                text="🔍 Мысли",
+                text="🔍 Ключевые мысли",
                 callback_data=f"key_points:{transcription_id}",
             ),
         ],
@@ -184,7 +184,7 @@ def history_transcription_keyboard(
                 callback_data=f"questions:{transcription_id}",
             ),
             InlineKeyboardButton(
-                text="📌 Шаги",
+                text="📌 Следующие шаги",
                 callback_data=f"next_steps:{transcription_id}",
             ),
         ],

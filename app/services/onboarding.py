@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User, UserProfile
-from app.services.plans import get_available_features, get_profile
+from app.services.plans import FEATURE_DISPLAY_LABELS, get_available_features, get_profile
 
 
 GOALS = (
@@ -48,38 +48,29 @@ USAGE_FREQUENCIES = (
 )
 
 PLAN_LABELS = {
-    "free": "Free",
-    "personal": "Personal",
-    "professional": "Professional",
-    "premium": "Premium",
+    "free": "Бесплатный",
+    "personal": "Личный",
+    "professional": "Профессиональный",
+    "premium": "Премиум",
 }
 
 QUALITY_LABELS = {
     "fast": "быстрый",
-    "premium": "premium",
+    "premium": "премиум",
 }
 
 FEATURE_LABELS = {
-    "clean": "очистка текста",
-    "summary": "краткое резюме",
-    "tasks": "задачи",
+    **FEATURE_DISPLAY_LABELS,
     "history": "история транскрипций",
-    "key_points": "ключевые мысли",
-    "questions": "вопросы",
-    "next_steps": "следующие шаги",
     "meeting_notes": "заметки по встречам",
     "role_report": "ролевой отчет",
-    "hr_summary": "HR summary",
-    "hr_report": "HR-отчет",
-    "competency_notes": "заметки по компетенциям",
-    "evidence": "evidence vs interpretation",
     "follow_up": "follow-up",
     "user_story": "user stories",
     "acceptance_criteria": "acceptance criteria",
     "risks": "риски",
     "idea_brief": "idea brief",
     "mvp_scope": "MVP scope",
-    "pitch_summary": "pitch summary",
+    "pitch_summary": "питч-саммари",
     "study_notes": "учебные заметки",
 }
 

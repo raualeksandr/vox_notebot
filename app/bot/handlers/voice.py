@@ -44,7 +44,7 @@ router = Router(name="voice")
 TextProcessor = Callable[[str], Awaitable[str]]
 TEXT_PROCESSORS: dict[str, tuple[str | None, TextProcessor]] = {
     "clean": ("🧹 Очищенный текст:", clean_text),
-    "summary": ("📝 Summary:", summarize_text),
+    "summary": ("📝 Саммари:", summarize_text),
     "tasks": ("✅ Задачи:", extract_tasks),
     "key_points": (None, extract_key_points),
     "questions": (None, extract_questions),
