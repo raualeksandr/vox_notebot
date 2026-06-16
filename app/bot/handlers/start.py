@@ -3,6 +3,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.handlers.onboarding import prompt_onboarding_start
 from app.bot.keyboards.user import user_menu_keyboard
 from app.config import get_settings
 from app.services.billing import get_or_create_balance
@@ -29,6 +30,10 @@ async def start_command(message: Message, session: AsyncSession) -> None:
     )
     await get_or_create_balance(session, user.id)
 
+    if not user.onboarding_completed:
+        await prompt_onboarding_start(message)
+        return
+
     await message.answer(
         f"Привет, {telegram_user.first_name}! Я бот для голосовых заметок.\n\n"
         "Отправьте voice-сообщение, и позже я смогу транскрибировать его в текст. "
@@ -48,9 +53,10 @@ async def help_command(message: Message) -> None:
         "/balance - показать баланс минут и последние операции\n"
         "/buy - выбрать пакет минут\n"
         "/history - открыть последние транскрипции\n"
+        "/setup - настроить профиль использования заново\n"
         "/admin - меню администратора, доступное только администраторам\n\n"
         "После транскрибации можно очистить текст, получить Summary "
-        "или выделить задачи."
+        "или выделить задачи, ключевые мысли, вопросы и следующие шаги."
     )
     telegram_user = message.from_user
     await message.answer(

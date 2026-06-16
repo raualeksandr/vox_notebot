@@ -1,4 +1,5 @@
 from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,6 +7,7 @@ from app.bot.handlers.admin import admin_command
 from app.bot.handlers.balance import balance_command
 from app.bot.handlers.buy import buy_command
 from app.bot.handlers.history import history_command
+from app.bot.handlers.onboarding import setup_command
 from app.bot.handlers.start import help_command
 
 
@@ -33,6 +35,15 @@ async def balance_button(message: Message, session: AsyncSession) -> None:
 @router.message(F.text == "🛒 Купить минуты")
 async def buy_button(message: Message) -> None:
     await buy_command(message)
+
+
+@router.message(F.text == "⚙️ Настройка")
+async def setup_button(
+    message: Message,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
+    await setup_command(message, session, state)
 
 
 @router.message(F.text == "❓ Помощь")

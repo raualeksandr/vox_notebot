@@ -17,6 +17,9 @@ def user_menu_keyboard(*, is_admin: bool = False) -> ReplyKeyboardMarkup:
         ],
         [
             KeyboardButton(text="🛒 Купить минуты"),
+            KeyboardButton(text="⚙️ Настройка"),
+        ],
+        [
             KeyboardButton(text="❓ Помощь"),
         ],
     ]
