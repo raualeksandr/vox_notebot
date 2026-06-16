@@ -27,8 +27,12 @@ from app.services.text_processing import (
     create_acceptance_criteria,
     create_assessment_report,
     create_hr_summary,
+    create_idea_brief,
     create_meeting_notes,
+    create_mvp_scope,
+    create_pitch_summary,
     create_user_story,
+    extract_business_hypotheses,
     extract_competency_notes,
     extract_key_points,
     extract_questions,
@@ -65,6 +69,12 @@ PM_BA_TEXT_PROCESSORS: dict[str, TextProcessor] = {
     "user_story": create_user_story,
     "acceptance_criteria": create_acceptance_criteria,
     "risks_assumptions": extract_risks_assumptions,
+}
+FOUNDER_TEXT_PROCESSORS: dict[str, TextProcessor] = {
+    "idea_brief": create_idea_brief,
+    "business_hypotheses": extract_business_hypotheses,
+    "mvp_scope": create_mvp_scope,
+    "pitch_summary": create_pitch_summary,
 }
 
 
@@ -190,12 +200,16 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
         include_pm_ba_actions = (
             user_profile is not None and user_profile.profile_type == "pm_ba"
         )
+        include_founder_actions = (
+            user_profile is not None and user_profile.profile_type == "founder"
+        )
         await message.answer(
             "Что сделать с транскрипцией?",
             reply_markup=transcription_actions_keyboard(
                 transcription.id,
                 include_hr_actions=include_hr_actions,
                 include_pm_ba_actions=include_pm_ba_actions,
+                include_founder_actions=include_founder_actions,
             ),
         )
     finally:
@@ -286,6 +300,33 @@ async def process_pm_ba_transcription_action(
     await _process_pm_ba_transcription_action(callback, session, action, transcription_id)
 
 
+@router.callback_query(
+    F.data.startswith("idea_brief:")
+    | F.data.startswith("business_hypotheses:")
+    | F.data.startswith("mvp_scope:")
+    | F.data.startswith("pitch_summary:")
+)
+async def process_founder_transcription_action(
+    callback: CallbackQuery,
+    session: AsyncSession,
+) -> None:
+    await callback.answer("Обрабатываю...")
+
+    callback_parts = (callback.data or "").split(":")
+    if len(callback_parts) != 2 or not callback_parts[1].isdigit():
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    action = callback_parts[0]
+    transcription_id = int(callback_parts[1])
+    await _process_founder_transcription_action(
+        callback,
+        session,
+        action,
+        transcription_id,
+    )
+
+
 async def _process_transcription_action(
     callback: CallbackQuery,
     session: AsyncSession,
@@ -324,6 +365,55 @@ async def _process_transcription_action(
 
     if title:
         await callback.bot.send_message(callback.from_user.id, title)
+    await send_text_chunks(callback.bot, callback.from_user.id, result)
+
+
+async def _process_founder_transcription_action(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    action: str,
+    transcription_id: int,
+) -> None:
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if user is None:
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    transcription = await get_user_transcription(
+        session,
+        transcription_id,
+        user.id,
+    )
+    if transcription is None or not transcription.transcript_text:
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    user_profile = await get_user_profile(session, user.id)
+    if user_profile is None or user_profile.profile_type != "founder":
+        await callback.bot.send_message(
+            callback.from_user.id,
+            "Эта функция недоступна для вашего профиля.",
+        )
+        return
+
+    processor = FOUNDER_TEXT_PROCESSORS.get(action)
+    if processor is None:
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    try:
+        result = await processor(transcription.transcript_text)
+    except (OpenAIKeyNotConfiguredError, OpenAIError, ValueError, RuntimeError):
+        logger.exception(
+            "Founder text processing failed for transcription %s",
+            transcription.id,
+        )
+        await callback.bot.send_message(
+            callback.from_user.id,
+            "Обработка текста временно недоступна.",
+        )
+        return
+
     await send_text_chunks(callback.bot, callback.from_user.id, result)
 
 

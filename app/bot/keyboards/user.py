@@ -128,11 +128,37 @@ def _pm_ba_action_rows(transcription_id: int) -> list[list[InlineKeyboardButton]
     ]
 
 
+def _founder_action_rows(transcription_id: int) -> list[list[InlineKeyboardButton]]:
+    return [
+        [
+            InlineKeyboardButton(
+                text="🚀 Идея",
+                callback_data=f"idea_brief:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🧪 Гипотезы",
+                callback_data=f"business_hypotheses:{transcription_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="🧱 MVP",
+                callback_data=f"mvp_scope:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🎤 Pitch",
+                callback_data=f"pitch_summary:{transcription_id}",
+            ),
+        ],
+    ]
+
+
 def transcription_actions_keyboard(
     transcription_id: int,
     *,
     include_hr_actions: bool = False,
     include_pm_ba_actions: bool = False,
+    include_founder_actions: bool = False,
 ) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [
@@ -170,6 +196,8 @@ def transcription_actions_keyboard(
         inline_keyboard.extend(_hr_action_rows(transcription_id))
     if include_pm_ba_actions:
         inline_keyboard.extend(_pm_ba_action_rows(transcription_id))
+    if include_founder_actions:
+        inline_keyboard.extend(_founder_action_rows(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,
@@ -181,6 +209,7 @@ def history_transcription_keyboard(
     *,
     include_hr_actions: bool = False,
     include_pm_ba_actions: bool = False,
+    include_founder_actions: bool = False,
 ) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [
@@ -222,6 +251,8 @@ def history_transcription_keyboard(
         inline_keyboard.extend(_hr_action_rows(transcription_id))
     if include_pm_ba_actions:
         inline_keyboard.extend(_pm_ba_action_rows(transcription_id))
+    if include_founder_actions:
+        inline_keyboard.extend(_founder_action_rows(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,

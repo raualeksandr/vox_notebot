@@ -21,6 +21,10 @@ FEATURE_DISPLAY_LABELS = {
     "competency_notes": "Компетенции",
     "evidence": "Факты / интерпретации",
     "hr_report": "HR-отчёт",
+    "idea_brief": "Идея",
+    "business_hypotheses": "Гипотезы",
+    "mvp_scope": "MVP Scope",
+    "pitch_summary": "Pitch",
 }
 
 CORE_FEATURES = [
@@ -49,6 +53,7 @@ ALL_FEATURES = [
     "risks_assumptions",
     "risks",
     "idea_brief",
+    "business_hypotheses",
     "mvp_scope",
     "next_steps",
     "pitch_summary",
@@ -130,6 +135,7 @@ PROFILES: dict[str, ProfileConfig] = {
             "clean",
             "summary",
             "idea_brief",
+            "business_hypotheses",
             "mvp_scope",
             "risks",
             "next_steps",

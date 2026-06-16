@@ -69,9 +69,10 @@ FEATURE_LABELS = {
     "acceptance_criteria": "Критерии приёмки",
     "risks_assumptions": "Риски и допущения",
     "risks": "риски",
-    "idea_brief": "idea brief",
-    "mvp_scope": "MVP scope",
-    "pitch_summary": "питч-саммари",
+    "idea_brief": "Идея",
+    "business_hypotheses": "Гипотезы",
+    "mvp_scope": "MVP Scope",
+    "pitch_summary": "Pitch",
     "study_notes": "учебные заметки",
 }
 
