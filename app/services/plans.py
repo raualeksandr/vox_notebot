@@ -6,6 +6,15 @@ from app.config import get_settings
 PlanConfig = dict[str, Any]
 ProfileConfig = dict[str, Any]
 
+CORE_FEATURES = [
+    "clean",
+    "summary",
+    "history",
+    "key_points",
+    "questions",
+    "next_steps",
+]
+
 ALL_FEATURES = [
     "clean",
     "summary",
@@ -32,23 +41,21 @@ PLANS: dict[str, PlanConfig] = {
     "free": {
         "minutes": 30,
         "quality": "fast",
-        "features": ["clean", "summary", "history"],
+        "features": [*CORE_FEATURES],
         "premium_rerun": False,
     },
     "personal": {
         "minutes": 300,
         "quality": "fast",
-        "features": ["clean", "summary", "tasks", "history"],
+        "features": [*CORE_FEATURES, "tasks"],
         "premium_rerun": False,
     },
     "professional": {
         "minutes": 600,
         "quality": "fast",
         "features": [
-            "clean",
-            "summary",
+            *CORE_FEATURES,
             "tasks",
-            "history",
             "meeting_notes",
             "role_report",
             "follow_up",

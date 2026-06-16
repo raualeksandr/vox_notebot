@@ -22,7 +22,14 @@ from app.services.billing import (
     remove_minutes,
 )
 from app.services.openai_client import OpenAIKeyNotConfiguredError
-from app.services.text_processing import clean_text, extract_tasks, summarize_text
+from app.services.text_processing import (
+    clean_text,
+    extract_key_points,
+    extract_questions,
+    extract_tasks,
+    suggest_next_steps,
+    summarize_text,
+)
 from app.services.transcription import get_user_transcription, transcribe_audio
 from app.services.users import get_or_create_user, get_user_by_telegram_id
 
@@ -31,6 +38,14 @@ logger = logging.getLogger(__name__)
 router = Router(name="voice")
 
 TextProcessor = Callable[[str], Awaitable[str]]
+TEXT_PROCESSORS: dict[str, tuple[str | None, TextProcessor]] = {
+    "clean": ("🧹 Очищенный текст:", clean_text),
+    "summary": ("📝 Summary:", summarize_text),
+    "tasks": ("✅ Задачи:", extract_tasks),
+    "key_points": (None, extract_key_points),
+    "questions": (None, extract_questions),
+    "next_steps": (None, suggest_next_steps),
+}
 
 
 def _format_minutes(value: Decimal) -> str:
@@ -172,6 +187,36 @@ async def process_transcription_text(
 
     action = callback_parts[1]
     transcription_id = int(callback_parts[2])
+    await _process_transcription_action(callback, session, action, transcription_id)
+
+
+@router.callback_query(
+    F.data.startswith("key_points:")
+    | F.data.startswith("questions:")
+    | F.data.startswith("next_steps:")
+)
+async def process_universal_transcription_action(
+    callback: CallbackQuery,
+    session: AsyncSession,
+) -> None:
+    await callback.answer("Обрабатываю...")
+
+    callback_parts = (callback.data or "").split(":")
+    if len(callback_parts) != 2 or not callback_parts[1].isdigit():
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    action = callback_parts[0]
+    transcription_id = int(callback_parts[1])
+    await _process_transcription_action(callback, session, action, transcription_id)
+
+
+async def _process_transcription_action(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    action: str,
+    transcription_id: int,
+) -> None:
     user = await get_user_by_telegram_id(session, callback.from_user.id)
     if user is None:
         await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
@@ -186,12 +231,7 @@ async def process_transcription_text(
         await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
         return
 
-    processors: dict[str, tuple[str, TextProcessor]] = {
-        "clean": ("🧹 Очищенный текст:", clean_text),
-        "summary": ("📝 Summary:", summarize_text),
-        "tasks": ("✅ Задачи:", extract_tasks),
-    }
-    processor_config = processors.get(action)
+    processor_config = TEXT_PROCESSORS.get(action)
     if processor_config is None:
         await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
         return
@@ -207,5 +247,6 @@ async def process_transcription_text(
         )
         return
 
-    await callback.bot.send_message(callback.from_user.id, title)
+    if title:
+        await callback.bot.send_message(callback.from_user.id, title)
     await send_text_chunks(callback.bot, callback.from_user.id, result)

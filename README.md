@@ -2,9 +2,10 @@
 
 Telegram-бот принимает голосовые сообщения, транскрибирует их через OpenAI,
 ведёт баланс минут и поддерживает ручные платежи и администрирование. После
-транскрибации пользователь может очистить текст, получить краткое резюме или
-выделить список задач. Команда `/history` позволяет вернуться к последним десяти
-успешным транскрипциям и повторно открыть или обработать их.
+транскрибации пользователь может очистить текст, получить краткое резюме,
+выделить список задач, ключевые мысли, вопросы и следующие шаги. Команда
+`/history` позволяет вернуться к последним десяти успешным транскрипциям и
+повторно открыть или обработать их.
 
 ## Требования
 
@@ -45,7 +46,7 @@ cp .env.example .env
   используется `TRANSCRIPTION_MODEL` или `gpt-4o-mini-transcribe`.
 - `TRANSCRIPTION_MODEL_PREMIUM` - будущая premium-модель транскрибации, по
   умолчанию `gpt-4o-transcribe`.
-- `TEXT_MODEL` - модель для Clean/Summary/Tasks, по умолчанию
+- `TEXT_MODEL` - модель для Clean/Summary/Tasks/Key Points/Questions/Next Steps, по умолчанию
   `gpt-5.4-nano`.
 - Параметры `SBP_*` и цены пакетов - настройки ручной оплаты.
 
@@ -69,8 +70,8 @@ postgresql+asyncpg://postgres:password@localhost:5432/voice_notes_bot
 
 Планы описаны в `app/services/plans.py`:
 
-- `free` - 30 минут, fast transcription, Clean/Summary/History.
-- `personal` - 300 минут, fast transcription, Clean/Summary/Tasks/History.
+- `free` - 30 минут, fast transcription, Clean/Summary/History/Key Points/Questions/Next Steps.
+- `personal` - 300 минут, fast transcription, Clean/Summary/Tasks/History/Key Points/Questions/Next Steps.
 - `professional` - 600 минут, fast transcription, расширенные рабочие сценарии
   и право на future premium rerun.
 - `premium` - 1000 минут, premium transcription и все известные features.
@@ -120,11 +121,13 @@ python -m app.main
 4. Отправьте voice-сообщение при положительном балансе.
 5. При настроенном `OPENAI_API_KEY` бот должен показать статус обработки,
    вернуть транскрипцию, списать округлённое вверх количество минут и показать
-   кнопки `🧹 Очистить`, `📝 Summary`, `✅ Задачи`.
+   кнопки `🧹 Очистить`, `📝 Summary`, `✅ Задачи`,
+   `🔍 Ключевые мысли`, `❓ Вопросы`, `📌 Следующие шаги`.
 6. Нажмите каждую кнопку и убедитесь, что бот обрабатывает именно выбранную
    транскрипцию. За эти операции дополнительные минуты не списываются.
 7. Выполните `/history`, откройте полный текст кнопкой `📄 Текст` и повторно
-   проверьте Clean/Summary/Tasks для одной из прошлых транскрипций.
+   проверьте Clean/Summary/Tasks/Key Points/Questions/Next Steps для одной из
+   прошлых транскрипций.
 8. Удалите `OPENAI_API_KEY`, перезапустите бота и повторите отправку. Бот должен
    сообщить, что ключ не настроен, не списывая минуты.
 

@@ -92,6 +92,20 @@ def transcription_actions_keyboard(transcription_id: int) -> InlineKeyboardMarku
                 InlineKeyboardButton(
                     text="✅ Задачи",
                     callback_data=f"text:tasks:{transcription_id}",
+                ),
+                InlineKeyboardButton(
+                    text="🔍 Ключевые мысли",
+                    callback_data=f"key_points:{transcription_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❓ Вопросы",
+                    callback_data=f"questions:{transcription_id}",
+                ),
+                InlineKeyboardButton(
+                    text="📌 Следующие шаги",
+                    callback_data=f"next_steps:{transcription_id}",
                 )
             ],
         ]
@@ -119,6 +133,20 @@ def history_transcription_keyboard(transcription_id: int) -> InlineKeyboardMarku
                 InlineKeyboardButton(
                     text="✅ Задачи",
                     callback_data=f"text:tasks:{transcription_id}",
+                ),
+                InlineKeyboardButton(
+                    text="🔍 Мысли",
+                    callback_data=f"key_points:{transcription_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❓ Вопросы",
+                    callback_data=f"questions:{transcription_id}",
+                ),
+                InlineKeyboardButton(
+                    text="📌 Шаги",
+                    callback_data=f"next_steps:{transcription_id}",
                 ),
             ],
         ]
