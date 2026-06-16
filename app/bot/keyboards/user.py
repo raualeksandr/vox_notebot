@@ -103,10 +103,36 @@ def _hr_action_rows(transcription_id: int) -> list[list[InlineKeyboardButton]]:
     ]
 
 
+def _pm_ba_action_rows(transcription_id: int) -> list[list[InlineKeyboardButton]]:
+    return [
+        [
+            InlineKeyboardButton(
+                text="📌 Протокол",
+                callback_data=f"meeting_notes:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🧩 User Story",
+                callback_data=f"user_story:{transcription_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="☑️ Критерии",
+                callback_data=f"acceptance_criteria:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="⚠️ Риски",
+                callback_data=f"risks_assumptions:{transcription_id}",
+            ),
+        ],
+    ]
+
+
 def transcription_actions_keyboard(
     transcription_id: int,
     *,
     include_hr_actions: bool = False,
+    include_pm_ba_actions: bool = False,
 ) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [
@@ -142,6 +168,8 @@ def transcription_actions_keyboard(
     ]
     if include_hr_actions:
         inline_keyboard.extend(_hr_action_rows(transcription_id))
+    if include_pm_ba_actions:
+        inline_keyboard.extend(_pm_ba_action_rows(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,
@@ -152,6 +180,7 @@ def history_transcription_keyboard(
     transcription_id: int,
     *,
     include_hr_actions: bool = False,
+    include_pm_ba_actions: bool = False,
 ) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [
@@ -191,6 +220,8 @@ def history_transcription_keyboard(
     ]
     if include_hr_actions:
         inline_keyboard.extend(_hr_action_rows(transcription_id))
+    if include_pm_ba_actions:
+        inline_keyboard.extend(_pm_ba_action_rows(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,

@@ -24,11 +24,15 @@ from app.services.billing import (
 from app.services.openai_client import OpenAIKeyNotConfiguredError
 from app.services.text_processing import (
     clean_text,
+    create_acceptance_criteria,
     create_assessment_report,
     create_hr_summary,
+    create_meeting_notes,
+    create_user_story,
     extract_competency_notes,
     extract_key_points,
     extract_questions,
+    extract_risks_assumptions,
     extract_tasks,
     separate_evidence_and_interpretation,
     suggest_next_steps,
@@ -55,6 +59,12 @@ HR_TEXT_PROCESSORS: dict[str, TextProcessor] = {
     "competency_notes": extract_competency_notes,
     "evidence": separate_evidence_and_interpretation,
     "hr_report": create_assessment_report,
+}
+PM_BA_TEXT_PROCESSORS: dict[str, TextProcessor] = {
+    "meeting_notes": create_meeting_notes,
+    "user_story": create_user_story,
+    "acceptance_criteria": create_acceptance_criteria,
+    "risks_assumptions": extract_risks_assumptions,
 }
 
 
@@ -177,11 +187,15 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
         include_hr_actions = (
             user_profile is not None and user_profile.profile_type == "hr_assessor"
         )
+        include_pm_ba_actions = (
+            user_profile is not None and user_profile.profile_type == "pm_ba"
+        )
         await message.answer(
             "Что сделать с транскрипцией?",
             reply_markup=transcription_actions_keyboard(
                 transcription.id,
                 include_hr_actions=include_hr_actions,
+                include_pm_ba_actions=include_pm_ba_actions,
             ),
         )
     finally:
@@ -250,6 +264,28 @@ async def process_hr_transcription_action(
     await _process_hr_transcription_action(callback, session, action, transcription_id)
 
 
+@router.callback_query(
+    F.data.startswith("meeting_notes:")
+    | F.data.startswith("user_story:")
+    | F.data.startswith("acceptance_criteria:")
+    | F.data.startswith("risks_assumptions:")
+)
+async def process_pm_ba_transcription_action(
+    callback: CallbackQuery,
+    session: AsyncSession,
+) -> None:
+    await callback.answer("Обрабатываю...")
+
+    callback_parts = (callback.data or "").split(":")
+    if len(callback_parts) != 2 or not callback_parts[1].isdigit():
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    action = callback_parts[0]
+    transcription_id = int(callback_parts[1])
+    await _process_pm_ba_transcription_action(callback, session, action, transcription_id)
+
+
 async def _process_transcription_action(
     callback: CallbackQuery,
     session: AsyncSession,
@@ -288,6 +324,52 @@ async def _process_transcription_action(
 
     if title:
         await callback.bot.send_message(callback.from_user.id, title)
+    await send_text_chunks(callback.bot, callback.from_user.id, result)
+
+
+async def _process_pm_ba_transcription_action(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    action: str,
+    transcription_id: int,
+) -> None:
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if user is None:
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    transcription = await get_user_transcription(
+        session,
+        transcription_id,
+        user.id,
+    )
+    if transcription is None or not transcription.transcript_text:
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    user_profile = await get_user_profile(session, user.id)
+    if user_profile is None or user_profile.profile_type != "pm_ba":
+        await callback.bot.send_message(
+            callback.from_user.id,
+            "Эта функция недоступна для вашего профиля.",
+        )
+        return
+
+    processor = PM_BA_TEXT_PROCESSORS.get(action)
+    if processor is None:
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    try:
+        result = await processor(transcription.transcript_text)
+    except (OpenAIKeyNotConfiguredError, OpenAIError, ValueError, RuntimeError):
+        logger.exception("PM/BA text processing failed for transcription %s", transcription.id)
+        await callback.bot.send_message(
+            callback.from_user.id,
+            "Обработка текста временно недоступна.",
+        )
+        return
+
     await send_text_chunks(callback.bot, callback.from_user.id, result)
 
 
