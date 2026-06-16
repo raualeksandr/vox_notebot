@@ -73,7 +73,6 @@ FEATURE_LABELS = {
     "business_hypotheses": "Гипотезы",
     "mvp_scope": "MVP Scope",
     "pitch_summary": "Pitch",
-    "study_notes": "учебные заметки",
 }
 
 

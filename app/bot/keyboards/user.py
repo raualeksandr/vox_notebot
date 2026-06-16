@@ -153,12 +153,40 @@ def _founder_action_rows(transcription_id: int) -> list[list[InlineKeyboardButto
     ]
 
 
+def _student_researcher_action_rows(
+    transcription_id: int,
+) -> list[list[InlineKeyboardButton]]:
+    return [
+        [
+            InlineKeyboardButton(
+                text="🎓 Конспект",
+                callback_data=f"study_notes:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🔍 Исследование",
+                callback_data=f"research_summary:{transcription_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="🧠 Объяснить проще",
+                callback_data=f"explain_simply:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🗂️ Карточки",
+                callback_data=f"flashcards:{transcription_id}",
+            ),
+        ],
+    ]
+
+
 def transcription_actions_keyboard(
     transcription_id: int,
     *,
     include_hr_actions: bool = False,
     include_pm_ba_actions: bool = False,
     include_founder_actions: bool = False,
+    include_student_researcher_actions: bool = False,
 ) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [
@@ -198,6 +226,8 @@ def transcription_actions_keyboard(
         inline_keyboard.extend(_pm_ba_action_rows(transcription_id))
     if include_founder_actions:
         inline_keyboard.extend(_founder_action_rows(transcription_id))
+    if include_student_researcher_actions:
+        inline_keyboard.extend(_student_researcher_action_rows(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,
@@ -210,6 +240,7 @@ def history_transcription_keyboard(
     include_hr_actions: bool = False,
     include_pm_ba_actions: bool = False,
     include_founder_actions: bool = False,
+    include_student_researcher_actions: bool = False,
 ) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [
@@ -253,6 +284,8 @@ def history_transcription_keyboard(
         inline_keyboard.extend(_pm_ba_action_rows(transcription_id))
     if include_founder_actions:
         inline_keyboard.extend(_founder_action_rows(transcription_id))
+    if include_student_researcher_actions:
+        inline_keyboard.extend(_student_researcher_action_rows(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,

@@ -25,6 +25,10 @@ FEATURE_DISPLAY_LABELS = {
     "business_hypotheses": "Гипотезы",
     "mvp_scope": "MVP Scope",
     "pitch_summary": "Pitch",
+    "study_notes": "Конспект",
+    "research_summary": "Исследовательское саммари",
+    "explain_simply": "Объяснить проще",
+    "flashcards": "Карточки",
 }
 
 CORE_FEATURES = [
@@ -59,6 +63,9 @@ ALL_FEATURES = [
     "pitch_summary",
     "key_points",
     "questions",
+    "research_summary",
+    "explain_simply",
+    "flashcards",
     "study_notes",
 ]
 
@@ -151,6 +158,9 @@ PROFILES: dict[str, ProfileConfig] = {
             "key_points",
             "questions",
             "study_notes",
+            "research_summary",
+            "explain_simply",
+            "flashcards",
         ],
         "recommended_plan": "personal",
     },

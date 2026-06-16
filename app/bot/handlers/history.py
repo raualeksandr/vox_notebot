@@ -55,6 +55,10 @@ async def history_command(message: Message, session: AsyncSession) -> None:
     include_founder_actions = (
         user_profile is not None and user_profile.profile_type == "founder"
     )
+    include_student_researcher_actions = (
+        user_profile is not None
+        and user_profile.profile_type == "student_researcher"
+    )
     await message.answer("Ваши последние транскрипции:")
     for transcription in transcriptions:
         duration_minutes = max(
@@ -71,6 +75,7 @@ async def history_command(message: Message, session: AsyncSession) -> None:
                 include_hr_actions=include_hr_actions,
                 include_pm_ba_actions=include_pm_ba_actions,
                 include_founder_actions=include_founder_actions,
+                include_student_researcher_actions=include_student_researcher_actions,
             ),
         )
 
