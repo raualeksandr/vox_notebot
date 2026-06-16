@@ -180,6 +180,33 @@ def _student_researcher_action_rows(
     ]
 
 
+def _personal_notes_action_rows(
+    transcription_id: int,
+) -> list[list[InlineKeyboardButton]]:
+    return [
+        [
+            InlineKeyboardButton(
+                text="🧠 Рефлексия",
+                callback_data=f"reflection:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="🗂️ Категории",
+                callback_data=f"categorize_note:{transcription_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="🏷️ Теги",
+                callback_data=f"tags:{transcription_id}",
+            ),
+            InlineKeyboardButton(
+                text="📅 План",
+                callback_data=f"action_plan:{transcription_id}",
+            ),
+        ],
+    ]
+
+
 def transcription_actions_keyboard(
     transcription_id: int,
     *,
@@ -187,6 +214,7 @@ def transcription_actions_keyboard(
     include_pm_ba_actions: bool = False,
     include_founder_actions: bool = False,
     include_student_researcher_actions: bool = False,
+    include_personal_notes_actions: bool = False,
 ) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [
@@ -228,6 +256,8 @@ def transcription_actions_keyboard(
         inline_keyboard.extend(_founder_action_rows(transcription_id))
     if include_student_researcher_actions:
         inline_keyboard.extend(_student_researcher_action_rows(transcription_id))
+    if include_personal_notes_actions:
+        inline_keyboard.extend(_personal_notes_action_rows(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,
@@ -241,6 +271,7 @@ def history_transcription_keyboard(
     include_pm_ba_actions: bool = False,
     include_founder_actions: bool = False,
     include_student_researcher_actions: bool = False,
+    include_personal_notes_actions: bool = False,
 ) -> InlineKeyboardMarkup:
     inline_keyboard = [
         [
@@ -286,6 +317,8 @@ def history_transcription_keyboard(
         inline_keyboard.extend(_founder_action_rows(transcription_id))
     if include_student_researcher_actions:
         inline_keyboard.extend(_student_researcher_action_rows(transcription_id))
+    if include_personal_notes_actions:
+        inline_keyboard.extend(_personal_notes_action_rows(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,

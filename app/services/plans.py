@@ -29,6 +29,10 @@ FEATURE_DISPLAY_LABELS = {
     "research_summary": "Исследовательское саммари",
     "explain_simply": "Объяснить проще",
     "flashcards": "Карточки",
+    "reflection": "Рефлексия",
+    "categorize_note": "Категории",
+    "tags": "Теги",
+    "action_plan": "План действий",
 }
 
 CORE_FEATURES = [
@@ -67,6 +71,10 @@ ALL_FEATURES = [
     "explain_simply",
     "flashcards",
     "study_notes",
+    "reflection",
+    "categorize_note",
+    "tags",
+    "action_plan",
 ]
 
 PLANS: dict[str, PlanConfig] = {
@@ -166,7 +174,16 @@ PROFILES: dict[str, ProfileConfig] = {
     },
     "personal_notes": {
         "label": "Личные заметки",
-        "default_features": ["clean", "summary", "tasks", "history"],
+        "default_features": [
+            "clean",
+            "summary",
+            "tasks",
+            "history",
+            "reflection",
+            "categorize_note",
+            "tags",
+            "action_plan",
+        ],
         "recommended_plan": "personal",
     },
 }
