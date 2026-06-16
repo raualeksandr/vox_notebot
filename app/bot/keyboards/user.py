@@ -7,6 +7,8 @@ from aiogram.types import (
     ReplyKeyboardMarkup,
 )
 
+from app.bot.role_actions import ROLE_ACTIONS
+
 
 def user_menu_keyboard(*, is_admin: bool = False) -> ReplyKeyboardMarkup:
     keyboard = [
@@ -78,133 +80,42 @@ def payment_claim_keyboard(payment_id: int) -> InlineKeyboardMarkup:
     )
 
 
-def _hr_action_rows(transcription_id: int) -> list[list[InlineKeyboardButton]]:
-    return [
-        [
-            InlineKeyboardButton(
-                text="📋 HR-саммари",
-                callback_data=f"hr_summary:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="🧠 Компетенции",
-                callback_data=f"competency_notes:{transcription_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text="⚖️ Факты / интерпретации",
-                callback_data=f"evidence:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="🧾 HR-отчёт",
-                callback_data=f"hr_report:{transcription_id}",
-            ),
-        ],
-    ]
-
-
-def _pm_ba_action_rows(transcription_id: int) -> list[list[InlineKeyboardButton]]:
-    return [
-        [
-            InlineKeyboardButton(
-                text="📌 Протокол",
-                callback_data=f"meeting_notes:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="🧩 User Story",
-                callback_data=f"user_story:{transcription_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text="☑️ Критерии",
-                callback_data=f"acceptance_criteria:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="⚠️ Риски",
-                callback_data=f"risks_assumptions:{transcription_id}",
-            ),
-        ],
-    ]
-
-
-def _founder_action_rows(transcription_id: int) -> list[list[InlineKeyboardButton]]:
-    return [
-        [
-            InlineKeyboardButton(
-                text="🚀 Идея",
-                callback_data=f"idea_brief:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="🧪 Гипотезы",
-                callback_data=f"business_hypotheses:{transcription_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text="🧱 MVP",
-                callback_data=f"mvp_scope:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="🎤 Pitch",
-                callback_data=f"pitch_summary:{transcription_id}",
-            ),
-        ],
-    ]
-
-
-def _student_researcher_action_rows(
+def _role_action_rows(
+    profile_type: str,
     transcription_id: int,
 ) -> list[list[InlineKeyboardButton]]:
     return [
         [
             InlineKeyboardButton(
-                text="🎓 Конспект",
-                callback_data=f"study_notes:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="🔍 Исследование",
-                callback_data=f"research_summary:{transcription_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text="🧠 Объяснить проще",
-                callback_data=f"explain_simply:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="🗂️ Карточки",
-                callback_data=f"flashcards:{transcription_id}",
-            ),
-        ],
+                text=action.label,
+                callback_data=f"{action.callback_key}:{transcription_id}",
+            )
+            for action in row
+        ]
+        for row in ROLE_ACTIONS.get(profile_type, ())
     ]
 
 
-def _personal_notes_action_rows(
-    transcription_id: int,
-) -> list[list[InlineKeyboardButton]]:
-    return [
-        [
-            InlineKeyboardButton(
-                text="🧠 Рефлексия",
-                callback_data=f"reflection:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="🗂️ Категории",
-                callback_data=f"categorize_note:{transcription_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text="🏷️ Теги",
-                callback_data=f"tags:{transcription_id}",
-            ),
-            InlineKeyboardButton(
-                text="📅 План",
-                callback_data=f"action_plan:{transcription_id}",
-            ),
-        ],
-    ]
+def _enabled_role_profiles(
+    *,
+    include_hr_actions: bool,
+    include_pm_ba_actions: bool,
+    include_founder_actions: bool,
+    include_student_researcher_actions: bool,
+    include_personal_notes_actions: bool,
+) -> list[str]:
+    enabled_profiles = []
+    if include_hr_actions:
+        enabled_profiles.append("hr_assessor")
+    if include_pm_ba_actions:
+        enabled_profiles.append("pm_ba")
+    if include_founder_actions:
+        enabled_profiles.append("founder")
+    if include_student_researcher_actions:
+        enabled_profiles.append("student_researcher")
+    if include_personal_notes_actions:
+        enabled_profiles.append("personal_notes")
+    return enabled_profiles
 
 
 def transcription_actions_keyboard(
@@ -248,16 +159,14 @@ def transcription_actions_keyboard(
             )
         ],
     ]
-    if include_hr_actions:
-        inline_keyboard.extend(_hr_action_rows(transcription_id))
-    if include_pm_ba_actions:
-        inline_keyboard.extend(_pm_ba_action_rows(transcription_id))
-    if include_founder_actions:
-        inline_keyboard.extend(_founder_action_rows(transcription_id))
-    if include_student_researcher_actions:
-        inline_keyboard.extend(_student_researcher_action_rows(transcription_id))
-    if include_personal_notes_actions:
-        inline_keyboard.extend(_personal_notes_action_rows(transcription_id))
+    for profile_type in _enabled_role_profiles(
+        include_hr_actions=include_hr_actions,
+        include_pm_ba_actions=include_pm_ba_actions,
+        include_founder_actions=include_founder_actions,
+        include_student_researcher_actions=include_student_researcher_actions,
+        include_personal_notes_actions=include_personal_notes_actions,
+    ):
+        inline_keyboard.extend(_role_action_rows(profile_type, transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,
@@ -309,16 +218,14 @@ def history_transcription_keyboard(
             ),
         ],
     ]
-    if include_hr_actions:
-        inline_keyboard.extend(_hr_action_rows(transcription_id))
-    if include_pm_ba_actions:
-        inline_keyboard.extend(_pm_ba_action_rows(transcription_id))
-    if include_founder_actions:
-        inline_keyboard.extend(_founder_action_rows(transcription_id))
-    if include_student_researcher_actions:
-        inline_keyboard.extend(_student_researcher_action_rows(transcription_id))
-    if include_personal_notes_actions:
-        inline_keyboard.extend(_personal_notes_action_rows(transcription_id))
+    for profile_type in _enabled_role_profiles(
+        include_hr_actions=include_hr_actions,
+        include_pm_ba_actions=include_pm_ba_actions,
+        include_founder_actions=include_founder_actions,
+        include_student_researcher_actions=include_student_researcher_actions,
+        include_personal_notes_actions=include_personal_notes_actions,
+    ):
+        inline_keyboard.extend(_role_action_rows(profile_type, transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,

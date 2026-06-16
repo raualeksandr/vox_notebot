@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.keyboards.user import history_transcription_keyboard
 from app.bot.message_utils import send_text_chunks
+from app.bot.role_actions import role_action_keyboard_flags
 from app.config import get_settings
 from app.services.transcription import (
     get_recent_transcriptions,
@@ -46,21 +47,8 @@ async def history_command(message: Message, session: AsyncSession) -> None:
         return
 
     user_profile = await get_user_profile(session, user.id)
-    include_hr_actions = (
-        user_profile is not None and user_profile.profile_type == "hr_assessor"
-    )
-    include_pm_ba_actions = (
-        user_profile is not None and user_profile.profile_type == "pm_ba"
-    )
-    include_founder_actions = (
-        user_profile is not None and user_profile.profile_type == "founder"
-    )
-    include_student_researcher_actions = (
-        user_profile is not None
-        and user_profile.profile_type == "student_researcher"
-    )
-    include_personal_notes_actions = (
-        user_profile is not None and user_profile.profile_type == "personal_notes"
+    role_keyboard_flags = role_action_keyboard_flags(
+        user_profile.profile_type if user_profile is not None else None,
     )
     await message.answer("Ваши последние транскрипции:")
     for transcription in transcriptions:
@@ -75,11 +63,7 @@ async def history_command(message: Message, session: AsyncSession) -> None:
             f"{_preview(transcription.transcript_text or '')}",
             reply_markup=history_transcription_keyboard(
                 transcription.id,
-                include_hr_actions=include_hr_actions,
-                include_pm_ba_actions=include_pm_ba_actions,
-                include_founder_actions=include_founder_actions,
-                include_student_researcher_actions=include_student_researcher_actions,
-                include_personal_notes_actions=include_personal_notes_actions,
+                **role_keyboard_flags,
             ),
         )
 

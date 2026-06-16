@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.keyboards.user import transcription_actions_keyboard
 from app.bot.message_utils import answer_text_chunks, send_text_chunks
+from app.bot.role_actions import ROLE_ACTIONS_BY_CALLBACK_KEY, role_action_keyboard_flags
 from app.config import get_settings
 from app.db.models import Transcription
 from app.services.billing import (
@@ -24,29 +25,9 @@ from app.services.billing import (
 from app.services.openai_client import OpenAIKeyNotConfiguredError
 from app.services.text_processing import (
     clean_text,
-    categorize_personal_note,
-    create_acceptance_criteria,
-    create_assessment_report,
-    create_action_plan,
-    create_flashcards,
-    create_hr_summary,
-    create_idea_brief,
-    create_meeting_notes,
-    create_mvp_scope,
-    create_pitch_summary,
-    create_research_summary,
-    create_reflection,
-    create_study_notes,
-    create_tags,
-    create_user_story,
-    extract_business_hypotheses,
-    extract_competency_notes,
     extract_key_points,
     extract_questions,
-    extract_risks_assumptions,
     extract_tasks,
-    explain_simply,
-    separate_evidence_and_interpretation,
     suggest_next_steps,
     summarize_text,
 )
@@ -66,38 +47,6 @@ TEXT_PROCESSORS: dict[str, tuple[str | None, TextProcessor]] = {
     "questions": (None, extract_questions),
     "next_steps": (None, suggest_next_steps),
 }
-HR_TEXT_PROCESSORS: dict[str, TextProcessor] = {
-    "hr_summary": create_hr_summary,
-    "competency_notes": extract_competency_notes,
-    "evidence": separate_evidence_and_interpretation,
-    "hr_report": create_assessment_report,
-}
-PM_BA_TEXT_PROCESSORS: dict[str, TextProcessor] = {
-    "meeting_notes": create_meeting_notes,
-    "user_story": create_user_story,
-    "acceptance_criteria": create_acceptance_criteria,
-    "risks_assumptions": extract_risks_assumptions,
-}
-FOUNDER_TEXT_PROCESSORS: dict[str, TextProcessor] = {
-    "idea_brief": create_idea_brief,
-    "business_hypotheses": extract_business_hypotheses,
-    "mvp_scope": create_mvp_scope,
-    "pitch_summary": create_pitch_summary,
-}
-STUDENT_RESEARCHER_TEXT_PROCESSORS: dict[str, TextProcessor] = {
-    "study_notes": create_study_notes,
-    "research_summary": create_research_summary,
-    "explain_simply": explain_simply,
-    "flashcards": create_flashcards,
-}
-PERSONAL_NOTES_TEXT_PROCESSORS: dict[str, TextProcessor] = {
-    "reflection": create_reflection,
-    "categorize_note": categorize_personal_note,
-    "tags": create_tags,
-    "action_plan": create_action_plan,
-}
-
-
 def _format_minutes(value: Decimal) -> str:
     return f"{value.normalize():f}"
 
@@ -214,31 +163,14 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
         )
         await answer_text_chunks(message, transcript_text)
         user_profile = await get_user_profile(session, user.id)
-        include_hr_actions = (
-            user_profile is not None and user_profile.profile_type == "hr_assessor"
-        )
-        include_pm_ba_actions = (
-            user_profile is not None and user_profile.profile_type == "pm_ba"
-        )
-        include_founder_actions = (
-            user_profile is not None and user_profile.profile_type == "founder"
-        )
-        include_student_researcher_actions = (
-            user_profile is not None
-            and user_profile.profile_type == "student_researcher"
-        )
-        include_personal_notes_actions = (
-            user_profile is not None and user_profile.profile_type == "personal_notes"
+        role_keyboard_flags = role_action_keyboard_flags(
+            user_profile.profile_type if user_profile is not None else None,
         )
         await message.answer(
             "Что сделать с транскрипцией?",
             reply_markup=transcription_actions_keyboard(
                 transcription.id,
-                include_hr_actions=include_hr_actions,
-                include_pm_ba_actions=include_pm_ba_actions,
-                include_founder_actions=include_founder_actions,
-                include_student_researcher_actions=include_student_researcher_actions,
-                include_personal_notes_actions=include_personal_notes_actions,
+                **role_keyboard_flags,
             ),
         )
     finally:
@@ -304,7 +236,7 @@ async def process_hr_transcription_action(
 
     action = callback_parts[0]
     transcription_id = int(callback_parts[1])
-    await _process_hr_transcription_action(callback, session, action, transcription_id)
+    await _process_role_transcription_action(callback, session, action, transcription_id)
 
 
 @router.callback_query(
@@ -326,7 +258,7 @@ async def process_pm_ba_transcription_action(
 
     action = callback_parts[0]
     transcription_id = int(callback_parts[1])
-    await _process_pm_ba_transcription_action(callback, session, action, transcription_id)
+    await _process_role_transcription_action(callback, session, action, transcription_id)
 
 
 @router.callback_query(
@@ -348,12 +280,7 @@ async def process_founder_transcription_action(
 
     action = callback_parts[0]
     transcription_id = int(callback_parts[1])
-    await _process_founder_transcription_action(
-        callback,
-        session,
-        action,
-        transcription_id,
-    )
+    await _process_role_transcription_action(callback, session, action, transcription_id)
 
 
 @router.callback_query(
@@ -375,12 +302,7 @@ async def process_student_researcher_transcription_action(
 
     action = callback_parts[0]
     transcription_id = int(callback_parts[1])
-    await _process_student_researcher_transcription_action(
-        callback,
-        session,
-        action,
-        transcription_id,
-    )
+    await _process_role_transcription_action(callback, session, action, transcription_id)
 
 
 @router.callback_query(
@@ -402,12 +324,7 @@ async def process_personal_notes_transcription_action(
 
     action = callback_parts[0]
     transcription_id = int(callback_parts[1])
-    await _process_personal_notes_transcription_action(
-        callback,
-        session,
-        action,
-        transcription_id,
-    )
+    await _process_role_transcription_action(callback, session, action, transcription_id)
 
 
 async def _process_transcription_action(
@@ -451,12 +368,18 @@ async def _process_transcription_action(
     await send_text_chunks(callback.bot, callback.from_user.id, result)
 
 
-async def _process_personal_notes_transcription_action(
+async def _process_role_transcription_action(
     callback: CallbackQuery,
     session: AsyncSession,
     action: str,
     transcription_id: int,
 ) -> None:
+    role_action_config = ROLE_ACTIONS_BY_CALLBACK_KEY.get(action)
+    if role_action_config is None:
+        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
+        return
+
+    expected_profile_type, role_action = role_action_config
     user = await get_user_by_telegram_id(session, callback.from_user.id)
     if user is None:
         await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
@@ -472,215 +395,20 @@ async def _process_personal_notes_transcription_action(
         return
 
     user_profile = await get_user_profile(session, user.id)
-    if user_profile is None or user_profile.profile_type != "personal_notes":
+    if user_profile is None or user_profile.profile_type != expected_profile_type:
         await callback.bot.send_message(
             callback.from_user.id,
             "Эта функция недоступна для вашего профиля.",
         )
         return
 
-    processor = PERSONAL_NOTES_TEXT_PROCESSORS.get(action)
-    if processor is None:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
     try:
-        result = await processor(transcription.transcript_text)
+        result = await role_action.processor(transcription.transcript_text)
     except (OpenAIKeyNotConfiguredError, OpenAIError, ValueError, RuntimeError):
         logger.exception(
-            "Personal notes text processing failed for transcription %s",
+            "Role-specific text processing failed for transcription %s",
             transcription.id,
         )
-        await callback.bot.send_message(
-            callback.from_user.id,
-            "Обработка текста временно недоступна.",
-        )
-        return
-
-    await send_text_chunks(callback.bot, callback.from_user.id, result)
-
-
-async def _process_student_researcher_transcription_action(
-    callback: CallbackQuery,
-    session: AsyncSession,
-    action: str,
-    transcription_id: int,
-) -> None:
-    user = await get_user_by_telegram_id(session, callback.from_user.id)
-    if user is None:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    transcription = await get_user_transcription(
-        session,
-        transcription_id,
-        user.id,
-    )
-    if transcription is None or not transcription.transcript_text:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    user_profile = await get_user_profile(session, user.id)
-    if user_profile is None or user_profile.profile_type != "student_researcher":
-        await callback.bot.send_message(
-            callback.from_user.id,
-            "Эта функция недоступна для вашего профиля.",
-        )
-        return
-
-    processor = STUDENT_RESEARCHER_TEXT_PROCESSORS.get(action)
-    if processor is None:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    try:
-        result = await processor(transcription.transcript_text)
-    except (OpenAIKeyNotConfiguredError, OpenAIError, ValueError, RuntimeError):
-        logger.exception(
-            "Student/researcher text processing failed for transcription %s",
-            transcription.id,
-        )
-        await callback.bot.send_message(
-            callback.from_user.id,
-            "Обработка текста временно недоступна.",
-        )
-        return
-
-    await send_text_chunks(callback.bot, callback.from_user.id, result)
-
-
-async def _process_founder_transcription_action(
-    callback: CallbackQuery,
-    session: AsyncSession,
-    action: str,
-    transcription_id: int,
-) -> None:
-    user = await get_user_by_telegram_id(session, callback.from_user.id)
-    if user is None:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    transcription = await get_user_transcription(
-        session,
-        transcription_id,
-        user.id,
-    )
-    if transcription is None or not transcription.transcript_text:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    user_profile = await get_user_profile(session, user.id)
-    if user_profile is None or user_profile.profile_type != "founder":
-        await callback.bot.send_message(
-            callback.from_user.id,
-            "Эта функция недоступна для вашего профиля.",
-        )
-        return
-
-    processor = FOUNDER_TEXT_PROCESSORS.get(action)
-    if processor is None:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    try:
-        result = await processor(transcription.transcript_text)
-    except (OpenAIKeyNotConfiguredError, OpenAIError, ValueError, RuntimeError):
-        logger.exception(
-            "Founder text processing failed for transcription %s",
-            transcription.id,
-        )
-        await callback.bot.send_message(
-            callback.from_user.id,
-            "Обработка текста временно недоступна.",
-        )
-        return
-
-    await send_text_chunks(callback.bot, callback.from_user.id, result)
-
-
-async def _process_pm_ba_transcription_action(
-    callback: CallbackQuery,
-    session: AsyncSession,
-    action: str,
-    transcription_id: int,
-) -> None:
-    user = await get_user_by_telegram_id(session, callback.from_user.id)
-    if user is None:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    transcription = await get_user_transcription(
-        session,
-        transcription_id,
-        user.id,
-    )
-    if transcription is None or not transcription.transcript_text:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    user_profile = await get_user_profile(session, user.id)
-    if user_profile is None or user_profile.profile_type != "pm_ba":
-        await callback.bot.send_message(
-            callback.from_user.id,
-            "Эта функция недоступна для вашего профиля.",
-        )
-        return
-
-    processor = PM_BA_TEXT_PROCESSORS.get(action)
-    if processor is None:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    try:
-        result = await processor(transcription.transcript_text)
-    except (OpenAIKeyNotConfiguredError, OpenAIError, ValueError, RuntimeError):
-        logger.exception("PM/BA text processing failed for transcription %s", transcription.id)
-        await callback.bot.send_message(
-            callback.from_user.id,
-            "Обработка текста временно недоступна.",
-        )
-        return
-
-    await send_text_chunks(callback.bot, callback.from_user.id, result)
-
-
-async def _process_hr_transcription_action(
-    callback: CallbackQuery,
-    session: AsyncSession,
-    action: str,
-    transcription_id: int,
-) -> None:
-    user = await get_user_by_telegram_id(session, callback.from_user.id)
-    if user is None:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    transcription = await get_user_transcription(
-        session,
-        transcription_id,
-        user.id,
-    )
-    if transcription is None or not transcription.transcript_text:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    user_profile = await get_user_profile(session, user.id)
-    if user_profile is None or user_profile.profile_type != "hr_assessor":
-        await callback.bot.send_message(
-            callback.from_user.id,
-            "Эта функция недоступна для вашего профиля.",
-        )
-        return
-
-    processor = HR_TEXT_PROCESSORS.get(action)
-    if processor is None:
-        await callback.bot.send_message(callback.from_user.id, "Транскрипция не найдена.")
-        return
-
-    try:
-        result = await processor(transcription.transcript_text)
-    except (OpenAIKeyNotConfiguredError, OpenAIError, ValueError, RuntimeError):
-        logger.exception("HR text processing failed for transcription %s", transcription.id)
         await callback.bot.send_message(
             callback.from_user.id,
             "Обработка текста временно недоступна.",
