@@ -15,6 +15,11 @@ GOALS = (
     "personal_notes",
 )
 
+PUBLIC_ONBOARDING_GOALS = {
+    "hr_assessor",
+    "personal_notes",
+}
+
 PREFERRED_OUTPUTS = (
     "clean_text",
     "summary",
@@ -86,6 +91,9 @@ def calculate_profile(answers: dict[str, Any]) -> str:
     preferred_output = _answer(answers, "preferred_output")
     audio_source = _answer(answers, "audio_source")
     quality_preference = _answer(answers, "quality_preference")
+
+    if goal in PUBLIC_ONBOARDING_GOALS:
+        return goal
 
     scores = dict.fromkeys(GOALS, 0)
 

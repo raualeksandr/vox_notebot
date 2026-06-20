@@ -1,18 +1,184 @@
 # voice-notes-bot
 
-Telegram-бот принимает голосовые сообщения, транскрибирует их через OpenAI,
-ведёт баланс минут и поддерживает ручные платежи и администрирование. После
-транскрибации пользователь может очистить текст, получить краткое резюме,
-выделить список задач, ключевые мысли, вопросы и следующие шаги. Команда
-`/history` позволяет вернуться к последним десяти успешным транскрипциям и
-повторно открыть или обработать их.
+## Project overview
 
-## Требования
+`voice-notes-bot` is a Telegram bot for turning voice notes into structured text artifacts. It is designed as an MVP that runs on Railway, uses PostgreSQL for persistence, OpenAI for transcription and text processing, and manual payments for minute balance top-ups.
+
+The current MVP focus is HR assessors and personal voice notes: send a voice note, receive a transcript, then turn it into clean text, summaries, tasks, reflection, plans, or HR assessment materials.
+
+## What the bot does
+
+- Transcribes Telegram voice messages.
+- Tracks a minute balance and charges minutes only for successful transcription.
+- Provides text actions after transcription.
+- Runs a 5-step onboarding flow with two public profiles and stores `UserProfile.profile_type`.
+- Shows profile-specific actions only for the active profile.
+- Keeps the last successful transcriptions available through `/history`.
+- Supports manual payment claims and admin approval/rejection.
+- Uses guardrails so text-processing outputs stay artifact-style.
+
+## Main flows
+
+### Voice transcription
+
+The user sends a Telegram voice message. The bot checks the user's balance, downloads the audio, transcribes it with the configured OpenAI transcription model, saves the transcript, deducts rounded-up minutes only after success, and shows action buttons for the transcript.
+
+Current voice flow uses the standard configured transcription model. Premium transcription is planned as a future option and is not enabled as the default voice path.
+
+### Text processing actions
+
+Universal actions are available after transcription and in `/history`:
+
+- `🧹 Очистить`
+- `📝 Саммари`
+- `✅ Задачи`
+- `🔍 Ключевые мысли`
+- `❓ Вопросы`
+- `📌 Следующие шаги`
+
+These actions do not deduct additional minutes in the current MVP.
+
+For the `personal_notes` profile, the post-transcription UI is intentionally smaller:
+
+- `🧹 Очистить`
+- `📝 Саммари`
+- `✅ Задачи`
+- `🧠 Рефлексия`
+- `📅 План`
+
+### Onboarding
+
+New users can complete a 5-step setup flow through `/start` or `/setup`. The public profile choice is limited to:
+
+- `📋 HR / оценка персонала`
+- `🧠 Личные заметки`
+
+The flow then asks about preferred output, audio source, quality preference, and usage frequency.
+
+The service layer calculates:
+
+- profile type
+- recommended plan
+- recommended transcription quality
+- onboarding summary
+
+The Telegram flow saves this data in `UserProfile` and marks onboarding as completed. It does not change billing rules.
+
+### Profile-specific actions
+
+Role actions are configured in `app/bot/role_actions.py`. The bot shows only the action rows for the current `UserProfile.profile_type`.
+
+Supported profile-specific actions:
+
+- HR / Assessor
+- Personal Notes
+
+Internal / legacy profile-specific actions remain in the code and callback routing:
+
+- PM / BA
+- Founder
+- Student / Researcher
+
+Profile-specific actions do not deduct additional minutes in the current MVP.
+
+### History
+
+`/history` shows the latest successful transcriptions. Users can open the full text and run the same visible actions for their profile. If their current profile has role-specific actions, the matching buttons are also shown for historical transcriptions.
+
+### Balance / manual payments
+
+`/balance` shows remaining minutes and recent transactions. `/buy` starts the manual payment flow. Users can claim payment with the `Я оплатил` button, and admins can approve or reject the claim.
+
+Package settings are configured through environment variables. The current MVP does not use Telegram Stars.
+
+### Admin flow
+
+Admins are configured with `ADMIN_TELEGRAM_IDS`. Admin tools include payment review, approve/reject flows, manual minute adjustments, and basic stats.
+
+## Supported profiles
+
+### HR / Assessor
+
+Profile key: `hr_assessor`
+
+Actions:
+
+- `📋 HR-саммари`
+- `🧠 Компетенции`
+- `⚖️ Факты / интерпретации`
+- `🧾 HR-отчёт`
+
+### PM / BA
+
+Internal / experimental / legacy profile. It is not shown in the public onboarding flow.
+
+Profile key: `pm_ba`
+
+Actions:
+
+- `📌 Протокол`
+- `🧩 User Story`
+- `☑️ Критерии`
+- `⚠️ Риски`
+
+### Founder
+
+Internal / experimental / legacy profile. It is not shown in the public onboarding flow.
+
+Profile key: `founder`
+
+Actions:
+
+- `🚀 Идея`
+- `🧪 Гипотезы`
+- `🧱 MVP`
+- `🎤 Pitch`
+
+### Student / Researcher
+
+Internal / experimental / legacy profile. It is not shown in the public onboarding flow.
+
+Profile key: `student_researcher`
+
+Actions:
+
+- `🎓 Конспект`
+- `🔍 Исследование`
+- `🧠 Объяснить проще`
+- `🗂️ Карточки`
+
+### Personal Notes
+
+Profile key: `personal_notes`
+
+Actions:
+
+- `🧠 Рефлексия`
+- `🗂️ Категории`
+- `🏷️ Теги`
+- `📅 План`
+
+## Safety / guardrails
+
+Text-processing prompts include shared guardrails:
+
+- Return only the requested artifact.
+- Do not add unsupported facts.
+- Do not address the user directly.
+- Do not add conversational tails such as "Если хочешь, могу...".
+- Keep assumptions separate from facts.
+- Stay inside the requested format.
+
+HR actions are designed to structure notes and draft reports, not to make final hiring or employment decisions.
+
+Personal Notes actions structure private notes, but do not diagnose, provide therapy, or make medical/psychological claims. Emotional content is handled neutrally.
+
+## Local development
+
+Requirements:
 
 - Python 3.11+
 - PostgreSQL
-
-## Установка
 
 Windows PowerShell:
 
@@ -32,268 +198,108 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-## Конфигурация
+Fill `.env` locally. Do not commit `.env`.
 
-Заполните локальный `.env`:
-
-- `BOT_TOKEN` - токен Telegram-бота.
-- `DATABASE_URL` - URL PostgreSQL с драйвером `asyncpg`.
-- `ADMIN_TELEGRAM_IDS` - Telegram ID администраторов через запятую.
-- `OPENAI_API_KEY` - API key для транскрибации и обработки текста.
-- `TRANSCRIPTION_MODEL` - модель транскрибации, по умолчанию
-  `gpt-4o-mini-transcribe`. Оставлена для обратной совместимости.
-- `TRANSCRIPTION_MODEL_FAST` - быстрая модель транскрибации. Если не задана,
-  используется `TRANSCRIPTION_MODEL` или `gpt-4o-mini-transcribe`.
-- `TRANSCRIPTION_MODEL_PREMIUM` - будущая premium-модель транскрибации, по
-  умолчанию `gpt-4o-transcribe`.
-- `TEXT_MODEL` - модель для очистки, саммари, задач, ключевых мыслей, вопросов
-  и следующих шагов, по умолчанию
-  `gpt-5.4-nano`.
-- Параметры `SBP_*` и цены пакетов - настройки ручной оплаты.
-
-Пример URL базы данных:
-
-```text
-postgresql+asyncpg://postgres:password@localhost:5432/voice_notes_bot
-```
-
-`.env` содержит секреты и не должен коммититься в GitHub. Он добавлен в
-`.gitignore`. В `.env.example` должны оставаться только безопасные пустые или
-демонстрационные значения.
-
-Бот запускается без `OPENAI_API_KEY`. В этом случае команды и админка доступны,
-а при отправке голосового сообщения бот сообщает, что транскрибация не настроена.
-
-## Profiles and plans architecture
-
-В коде заложена архитектура профилей, тарифов и будущего выбора качества
-транскрибации без изменения текущего пользовательского flow.
-
-Планы описаны в `app/services/plans.py`:
-
-- `free` - 30 минут, быстрая транскрибация, очистка, саммари, история,
-  ключевые мысли, вопросы и следующие шаги.
-- `personal` - 300 минут, быстрая транскрибация, очистка, саммари, задачи,
-  история, ключевые мысли, вопросы и следующие шаги.
-- `professional` - 600 минут, fast transcription, расширенные рабочие сценарии
-  и право на future premium rerun.
-- `premium` - 1000 минут, premium transcription и все известные features.
-
-Профили также описаны в `app/services/plans.py`: `hr_assessor`, `pm_ba`,
-`founder`, `student_researcher`, `personal_notes`. У каждого профиля есть label,
-набор default features и recommended plan.
-
-Premium transcription пока является future option: helper
-`get_transcription_model_for_user()` умеет выбирать fast или premium модель по
-`User.transcription_quality` и `User.current_plan`, но текущий обработчик голосовых
-продолжает использовать прежнюю модель транскрибации по умолчанию.
-
-## Onboarding scoring service
-
-Сервис `app/services/onboarding.py` содержит rule-based scoring для будущего
-onboarding questionnaire: определяет профиль пользователя, рекомендует тариф,
-выбирает рекомендованный режим качества и формирует русскоязычное описание результата.
-Он также умеет создавать или обновлять `UserProfile` через
-`upsert_user_profile()`.
-
-Текущие flow голосовых сообщений и billing этот сервис не меняет.
-
-## Telegram onboarding
-
-Новые пользователи при `/start` видят короткое предложение настроить бота под
-свои задачи. Onboarding проходит в 5 шагов: цель использования, желаемый
-результат, источник аудио, предпочтение по качеству и частота использования.
-После завершения бот сохраняет `UserProfile`, `recommended_plan` и помечает
-`User.onboarding_completed=True`.
-
-Команда `/setup` и кнопка меню `⚙️ Настройка` запускают настройку заново. Если
-пользователь уже прошёл onboarding, обычный `/start` не заставляет проходить его
-повторно.
-
-## HR / Assessor actions
-
-Для пользователей с профилем `hr_assessor` после транскрибации и в `/history`
-доступны дополнительные HR-действия:
-
-- `📋 HR-саммари` - краткое HR-резюме заметки без финальных кадровых решений.
-- `🧠 Компетенции` - наблюдения по компетенциям с фактами,
-  интерпретацией, уровнем уверенности и вопросами для уточнения.
-- `⚖️ Факты / интерпретации` - разделение наблюдаемых фактов, гипотез,
-  недостающих данных и рисков необоснованных выводов.
-- `🧾 HR-отчёт` - черновик оценочного отчёта с контекстом, наблюдениями,
-  сильными сторонами, рисками, вопросами и ограничениями оценки.
-
-Эти действия показываются только если `UserProfile.profile_type` равен
-`hr_assessor`. За HR-действия дополнительные минуты не списываются.
-
-## PM / BA actions
-
-Для пользователей с профилем `pm_ba` после транскрибации и в `/history`
-доступны дополнительные PM/BA-действия:
-
-- `📌 Протокол` - структурирует заметку как протокол встречи: контекст,
-  основные темы, решения, задачи, открытые вопросы и следующие шаги.
-- `🧩 User Story` - формирует user story, описание, бизнес-ценность и открытые
-  вопросы без выдумывания роли, ценности или требований.
-- `☑️ Критерии` - готовит критерии приёмки в формате Given / When / Then или
-  checklist, если такой формат лучше подходит.
-- `⚠️ Риски` - разделяет риски, допущения, зависимости и вопросы для уточнения.
-
-Эти действия показываются только если `UserProfile.profile_type` равен `pm_ba`.
-За PM/BA-действия дополнительные минуты не списываются.
-
-## Founder actions
-
-Для пользователей с профилем `founder` после транскрибации и в `/history`
-доступны дополнительные founder-действия:
-
-- `🚀 Идея` - собирает brief идеи: проблему, аудиторию, решение, ценность,
-  важность и неясные места.
-- `🧪 Гипотезы` - выделяет проблемную, клиентскую, продуктовую, канальную и
-  монетизационную гипотезы, отделяя предположения от фактов.
-- `🧱 MVP` - помогает разложить scope на Must-have, Should-have, Later и Not now,
-  а также обозначить риски скоупа и первый тест.
-- `🎤 Pitch` - формирует короткий pitch: one-liner, 30-second pitch, аудиторию,
-  боль, актуальность и открытые вопросы.
-
-Эти действия показываются только если `UserProfile.profile_type` равен
-`founder`. За founder-действия дополнительные минуты не списываются.
-
-## Student / Researcher actions
-
-Для пользователей с профилем `student_researcher` после транскрибации и в
-`/history` доступны дополнительные учебные и исследовательские действия:
-
-- `🎓 Конспект` - превращает заметку в учебный конспект с темой, основными
-  идеями, терминами, примерами и вопросами для повторения.
-- `🔍 Исследование` - формирует исследовательское саммари: вопрос, тезисы,
-  метод или подход, выводы, ограничения и применение.
-- `🧠 Объяснить проще` - объясняет содержание проще, сохраняя исходный смысл.
-- `🗂️ Карточки` - создаёт Q/A-карточки для повторения по материалу заметки.
-
-Эти действия показываются только если `UserProfile.profile_type` равен
-`student_researcher`. За Student/Researcher-действия дополнительные минуты не
-списываются.
-
-## Personal Notes actions
-
-Для пользователей с профилем `personal_notes` после транскрибации и в `/history`
-доступны дополнительные действия для личных заметок:
-
-- `🧠 Рефлексия` - мягко структурирует главную мысль, важные моменты, контекст и
-  небольшой следующий шаг.
-- `🗂️ Категории` - помогает отнести заметку к рабочей, учебной, бытовой,
-  финансовой, эмоциональной или другой области.
-- `🏷️ Теги` - создаёт короткие теги и выделяет 1–3 главных тега.
-- `📅 План` - превращает заметку в небольшой практичный план действий без
-  выдуманных дедлайнов.
-
-Эти действия показываются только если `UserProfile.profile_type` равен
-`personal_notes`. Бот структурирует личные заметки, но не ставит диагнозы, не
-оказывает терапию и обрабатывает чувствительный эмоциональный контент
-нейтрально. За Personal Notes-действия дополнительные минуты не списываются.
-
-## UI labels and internal keys
-
-Пользовательский интерфейс использует русские labels для кнопок и сообщений.
-Внутренние feature keys, callback keys и Python-функции остаются на английском
-(`summary`, `tasks`, `key_points`, `hr_summary` и другие). Это сохраняет
-стабильность логики и оставляет место для будущей локализации.
-
-## Text processing guardrails
-
-Результаты text-processing actions должны быть рабочими артефактами, а не
-диалоговыми сообщениями ассистента. Общие guardrails в `app/services/text_processing.py`
-подавляют conversational endings, дополнительные предложения от ассистента и
-неподтверждённые факты. Финальные строки вроде "Если хочешь, могу..." удаляются
-перед отправкой пользователю.
-
-## Миграции
-
-Применить миграции:
+Apply migrations:
 
 ```bash
 alembic upgrade head
 ```
 
-Создать миграцию после изменения моделей:
-
-```bash
-alembic revision --autogenerate -m "describe change"
-```
-
-## Запуск
+Run the bot locally only when you intentionally want to start polling:
 
 ```bash
 python -m app.main
 ```
 
-Основные пользовательские команды:
+Useful checks:
 
-- `/start` - регистрация и начало работы.
-- `/balance` - баланс минут и последние операции.
-- `/buy` - пакеты минут.
-- `/history` - последние 10 успешных транскрипций.
-- `/setup` - настроить профиль использования заново.
-- `/admin` - меню администратора.
+```bash
+python -m compileall app
+alembic heads
+```
 
-## Ручная проверка
+## Railway deployment
 
-1. Выполните `/start`, затем `/balance`.
-2. В `/buy` получите Free-пакет либо создайте заявку на Friends/Power.
-3. Проверьте заявку через `/admin` с аккаунта администратора.
-4. Отправьте голосовое сообщение при положительном балансе.
-5. При настроенном `OPENAI_API_KEY` бот должен показать статус обработки,
-   вернуть транскрипцию, списать округлённое вверх количество минут и показать
-   кнопки `🧹 Очистить`, `📝 Саммари`, `✅ Задачи`,
-   `🔍 Ключевые мысли`, `❓ Вопросы`, `📌 Следующие шаги`.
-6. Нажмите каждую кнопку и убедитесь, что бот обрабатывает именно выбранную
-   транскрипцию. За эти операции дополнительные минуты не списываются.
-7. Выполните `/history`, откройте полный текст кнопкой `📄 Текст` и повторно
-   проверьте очистку, саммари, задачи, ключевые мысли, вопросы и следующие шаги
-   для одной из прошлых транскрипций.
-8. Удалите `OPENAI_API_KEY`, перезапустите бота и повторите отправку. Бот должен
-   сообщить, что ключ не настроен, не списывая минуты.
-
-Bear export и Telegram Stars пока не подключены.
-
-## Deploy to Railway
-
-1. Загрузите проект в GitHub, не добавляя локальный файл `.env`.
-2. В Railway создайте новый Service из GitHub-репозитория проекта.
-3. Railway использует команду запуска из `railway.toml`:
+The Railway start command is defined in `railway.toml`:
 
 ```bash
 python -m app.main
 ```
 
-4. Добавьте в Railway Variables необходимые переменные окружения:
+Deployment checklist:
 
-```text
-BOT_TOKEN
-OPENAI_API_KEY
-DATABASE_URL
-ADMIN_TELEGRAM_IDS
-SBP_PHONE
-SBP_BANK_NAME
-SBP_RECIPIENT_NAME
-SBP_PAYMENT_COMMENT
-DEFAULT_FREE_MINUTES
-FRIENDS_PACKAGE_MINUTES
-POWER_PACKAGE_MINUTES
-FRIENDS_PACKAGE_PRICE
-POWER_PACKAGE_PRICE
-TRANSCRIPTION_MODEL
-TRANSCRIPTION_MODEL_FAST
-TRANSCRIPTION_MODEL_PREMIUM
-TEXT_MODEL
-```
+- Create a Railway service from the GitHub repository.
+- Attach or configure PostgreSQL.
+- Set all required environment variables in Railway Variables.
+- Run `alembic upgrade head` against the Railway database before the service handles users.
+- Check deploy logs after redeploy.
+- Confirm the bot responds in Telegram.
 
-5. Перед запуском сервиса примените Alembic-миграции к Railway PostgreSQL:
+Secrets must live in Railway Variables, not in Git.
 
-```bash
-alembic upgrade head
-```
+## Environment variables
 
-Файл `.env` нельзя коммитить в GitHub. Токены, ключи, URL базы данных и другие
-секреты добавляйте только через раздел Railway Variables.
+Actual settings are defined in `app/config.py`. `.env.example` contains placeholder or safe default values only.
+
+Required or commonly used variables:
+
+- `BOT_TOKEN`
+- `OPENAI_API_KEY`
+- `DATABASE_URL`
+- `ADMIN_TELEGRAM_IDS`
+- `TEXT_MODEL`
+- `TRANSCRIPTION_MODEL`
+- `TRANSCRIPTION_MODEL_FAST`
+- `TRANSCRIPTION_MODEL_PREMIUM`
+- `SBP_PHONE`
+- `SBP_BANK_NAME`
+- `SBP_RECIPIENT_NAME`
+- `SBP_PAYMENT_COMMENT`
+- `DEFAULT_FREE_MINUTES`
+- `FRIENDS_PACKAGE_MINUTES`
+- `POWER_PACKAGE_MINUTES`
+- `FRIENDS_PACKAGE_PRICE`
+- `POWER_PACKAGE_PRICE`
+
+`TRANSCRIPTION_MODEL` is kept for backward compatibility. If `TRANSCRIPTION_MODEL_FAST` is empty, the app falls back to `TRANSCRIPTION_MODEL` or `gpt-4o-mini-transcribe`. `TRANSCRIPTION_MODEL_PREMIUM` is configured for future premium transcription support.
+
+## Manual QA checklist
+
+See [docs/MANUAL_QA.md](docs/MANUAL_QA.md).
+
+Short release smoke test:
+
+- `/start`
+- `/help`
+- `/setup`
+- `/balance`
+- `/history`
+- send one short voice note
+- run one universal action
+- confirm onboarding shows only HR / assessment and personal notes
+- confirm personal notes shows only clean, summary, tasks, reflection, and plan actions after transcription
+- confirm HR profile still shows the existing HR buttons
+- create and review one manual payment claim
+
+## Known limitations / Next steps
+
+Current limitations:
+
+- No automated test suite yet.
+- No separate dev/prod bot setup documented in code.
+- Premium transcription rerun is planned, not enabled as a default user flow.
+- Telegram Stars are planned for later, not implemented.
+- Export to Notion, Google Docs, Bear, or similar tools is planned for later, not implemented.
+
+Planned next steps:
+
+- Separate dev and production bots.
+- Add automated tests for onboarding, billing, action gating, and callback processing.
+- Add premium transcription rerun when pricing and UX are ready.
+- Add exports after core flows stay stable.
+- Continue reducing duplication around action routing where it remains safe.
+
+## Release notes
+
+See [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md).

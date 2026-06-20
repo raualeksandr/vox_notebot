@@ -76,6 +76,9 @@ def _answer_keyboard(prefix: str, options: list[tuple[str, str]]) -> InlineKeybo
 
 async def prompt_onboarding_start(message: Message) -> None:
     await message.answer(
+        "Бот помогает превращать голосовые заметки в аккуратные тексты, "
+        "саммари и рабочие материалы. Основные режимы: личные заметки "
+        "и HR-оценка.\n\n"
         "Давайте быстро настроим бота под ваши задачи. Это займёт меньше минуты.",
         reply_markup=onboarding_start_keyboard(),
     )
@@ -89,10 +92,7 @@ async def start_onboarding(message: Message, state: FSMContext) -> None:
         reply_markup=_answer_keyboard(
             "goal",
             [
-                ("📋 Оценка персонала / интервью", "hr_assessor"),
-                ("🧩 Проекты / требования / встречи", "pm_ba"),
-                ("🚀 Идеи для бизнеса / продукта", "founder"),
-                ("🎓 Учёба / исследования", "student_researcher"),
+                ("📋 HR / оценка персонала", "hr_assessor"),
                 ("🧠 Личные заметки", "personal_notes"),
             ],
         ),
@@ -194,6 +194,11 @@ async def setup_command(
     if message.from_user is None:
         return
     await _get_or_create_current_user(message, session)
+    await message.answer(
+        "Бот помогает превращать голосовые заметки в аккуратные тексты, "
+        "саммари и рабочие материалы. Основные режимы: личные заметки "
+        "и HR-оценка."
+    )
     await start_onboarding(message, state)
 
 
