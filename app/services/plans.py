@@ -88,6 +88,7 @@ PLANS: dict[str, PlanConfig] = {
         "label": "Free",
         "display_label": "Free",
         "minutes": 30,
+        "duration_days": None,
         "quality": "fast",
         "transcription": "fast",
         "actions": "basic",
@@ -99,6 +100,7 @@ PLANS: dict[str, PlanConfig] = {
         "display_label": "Personal",
         "minutes": 300,
         "days": 60,
+        "duration_days": 60,
         "quality": "fast",
         "transcription": "fast",
         "actions": "personal_notes",
@@ -113,6 +115,7 @@ PLANS: dict[str, PlanConfig] = {
         "status": "legacy/internal",
         "minutes": 600,
         "days": 60,
+        "duration_days": 60,
         "quality": "premium",
         "transcription": "premium",
         "actions": "pm_ba",
@@ -136,6 +139,7 @@ PLANS: dict[str, PlanConfig] = {
         "display_label": "Premium HR",
         "minutes": 1000,
         "days": 60,
+        "duration_days": 60,
         "quality": "premium",
         "transcription": "premium",
         "actions": "hr",
@@ -227,6 +231,18 @@ def get_plan(plan_key: str) -> PlanConfig:
 
 def get_profile(profile_key: str) -> ProfileConfig | None:
     return PROFILES.get(profile_key)
+
+
+def get_plan_minutes(plan_key: str) -> int:
+    return int(get_plan(plan_key)["minutes"])
+
+
+def get_default_profile_for_plan(plan_key: str) -> str | None:
+    if plan_key in {"free", "personal"}:
+        return "personal_notes"
+    if plan_key == "premium":
+        return "hr_assessor"
+    return None
 
 
 def get_text_model_for_plan(plan_key: str, profile_type: str | None = None) -> str:

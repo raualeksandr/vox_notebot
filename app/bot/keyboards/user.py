@@ -34,7 +34,7 @@ def user_menu_keyboard(*, is_admin: bool = False) -> ReplyKeyboardMarkup:
         ],
         [
             KeyboardButton(text="🛒 Купить минуты"),
-            KeyboardButton(text="⚙️ Настройка"),
+            KeyboardButton(text="🛒 Тарифы"),
         ],
         [
             KeyboardButton(text="❓ Помощь"),
@@ -68,13 +68,13 @@ def packages_keyboard(
             ],
             [
                 InlineKeyboardButton(
-                    text=f"Friends - {friends_minutes} минут - {friends_price:g} ₽",
+                    text=f"Personal - {friends_minutes} минут - {friends_price:g} ₽",
                     callback_data="package:friends",
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"Power - {power_minutes} минут - {power_price:g} ₽",
+                    text=f"Premium HR - {power_minutes} минут - {power_price:g} ₽",
                     callback_data="package:power",
                 )
             ],

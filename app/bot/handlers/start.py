@@ -3,7 +3,6 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.handlers.onboarding import prompt_onboarding_start
 from app.bot.keyboards.user import user_menu_keyboard
 from app.config import get_settings
 from app.services.billing import get_or_create_balance
@@ -11,6 +10,37 @@ from app.services.users import get_or_create_user
 
 
 router = Router(name="start")
+
+
+WELCOME_TEXT = (
+    "VoxNoteBot превращает голосовые заметки в аккуратный текст, саммари и "
+    "рабочие материалы.\n\n"
+    "Основные режимы:\n"
+    "- Личные заметки: очистка, саммари, задачи, рефлексия, план.\n"
+    "- HR / оценка персонала: HR-саммари, факты/интерпретации, люди, "
+    "компетенции, сильные стороны/зоны роста, рекомендации и HR-отчёт.\n\n"
+    "Тарифы:\n"
+    "Free - 30 минут, fast-транскрибация, Очистить и Саммари.\n"
+    "Personal - 199 RUB, 300 минут, личные заметки: Очистить, Саммари, "
+    "Задачи, Рефлексия, План.\n"
+    "Premium HR - 1290 RUB, 1000 минут, premium-транскрибация, HR-функции "
+    "для оценщиков.\n\n"
+    "Отправьте голосовое сообщение, чтобы начать."
+)
+
+
+HELP_TEXT = (
+    "Команды:\n"
+    "/start - описание продукта и тарифов\n"
+    "/help - помощь и список команд\n"
+    "/balance - баланс минут и последние операции\n"
+    "/history - последние транскрипции\n"
+    "/buy - тарифы / купить минуты\n"
+    "/admin - меню администратора, только для админов\n\n"
+    "Доступ к функциям зависит от тарифа. Free даёт базовые действия, "
+    "Personal открывает личные заметки, Premium HR открывает HR-функции "
+    "для оценщиков."
+)
 
 
 @router.message(CommandStart())
@@ -30,18 +60,7 @@ async def start_command(message: Message, session: AsyncSession) -> None:
     )
     await get_or_create_balance(session, user.id)
 
-    if not user.onboarding_completed:
-        await prompt_onboarding_start(message)
-        return
-
-    await message.answer(
-        f"Привет, {telegram_user.first_name}! Я бот для голосовых заметок.\n\n"
-        "Бот помогает превращать голосовые заметки в аккуратные тексты, "
-        "саммари и рабочие материалы. Основные режимы: личные заметки "
-        "и HR-оценка.\n\n"
-        "Отправьте голосовое сообщение, и я транскрибирую его в текст.\n\n"
-        "Используйте /balance для проверки минут и /buy для выбора пакета."
-    )
+    await message.answer(WELCOME_TEXT)
     await message.answer(
         "Используйте кнопки меню ниже.",
         reply_markup=user_menu_keyboard(is_admin=settings.is_admin(telegram_user.id)),
@@ -50,19 +69,7 @@ async def start_command(message: Message, session: AsyncSession) -> None:
 
 @router.message(Command("help"))
 async def help_command(message: Message) -> None:
-    await message.answer(
-        "Доступные команды:\n"
-        "/balance - показать баланс минут и последние операции\n"
-        "/buy - выбрать пакет минут\n"
-        "/history - открыть последние транскрипции\n"
-        "/setup - настроить профиль использования заново\n"
-        "/admin - меню администратора, доступное только администраторам\n\n"
-        "Бот помогает превращать голосовые заметки в аккуратные тексты, "
-        "саммари и рабочие материалы. Основные режимы: личные заметки "
-        "и HR-оценка.\n\n"
-        "После транскрибации можно очистить текст, получить саммари, "
-        "выделить задачи, ключевые мысли, вопросы и следующие шаги."
-    )
+    await message.answer(HELP_TEXT)
     telegram_user = message.from_user
     await message.answer(
         "Меню команд:",

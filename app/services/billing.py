@@ -58,6 +58,19 @@ async def add_minutes(
     return balance
 
 
+async def set_balance_minutes(
+    session: AsyncSession,
+    user_id: int,
+    minutes: Decimal | int | float | str,
+) -> Balance:
+    amount = _as_minutes(minutes)
+    balance = await get_or_create_balance(session, user_id)
+    balance.minutes_remaining = amount
+    balance.minutes_total = Decimal(balance.minutes_used) + amount
+    await session.flush()
+    return balance
+
+
 async def remove_minutes(
     session: AsyncSession,
     user_id: int,

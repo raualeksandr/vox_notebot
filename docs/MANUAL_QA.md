@@ -10,19 +10,16 @@ Use this checklist before a release or Railway redeploy. Run it against a test b
 - Send `/balance`.
 - Send `/history`.
 
-Expected result: commands respond without errors, and existing users are not forced through onboarding by `/start` if onboarding is already completed.
+Expected result: commands respond without errors. `/start` shows the product description and tariffs. `/setup` does not start the old questionnaire.
 
-## B. Onboarding
+## B. Start / Setup / Menu
 
-- Run `/setup`.
-- Complete onboarding as HR / Assessor.
-- Complete onboarding as PM / BA.
-- Complete onboarding as Founder.
-- Complete onboarding as Student / Researcher.
-- Complete onboarding as Personal Notes.
-- Check that each completion shows a summary.
-- Check in the database that `UserProfile.profile_type` is saved.
-- Check that `User.onboarding_completed` and `UserProfile.onboarding_completed` are true after completion.
+- Run `/start` and confirm it explains VoxNoteBot, Personal Notes, Premium HR, and tariffs.
+- Run `/setup` and confirm it says setup is no longer required.
+- Confirm `/setup` does not show questionnaire buttons.
+- Confirm the reply menu does not contain `⚙️ Настройка`.
+- Confirm the reply menu contains `🛒 Тарифы`.
+- Click `🛒 Тарифы` and confirm it opens the `/buy` tariff/package flow.
 
 ## C. Voice
 
@@ -92,9 +89,14 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - Click `Я оплатил`.
 - As admin, approve the payment.
 - As admin, reject another payment.
-- As admin, add minutes manually.
-- As admin, remove minutes manually.
 - As admin, open `/admin`, click `💳 Сменить тариф`, enter a user's Telegram ID, and switch plans.
+- Confirm plan assignment reports old/new plan and old/new balance.
+- Confirm Free sets balance to 30 minutes and creates `personal_notes` only when no profile exists.
+- Confirm Personal sets balance to 300 minutes and `profile_type="personal_notes"`.
+- Confirm Premium HR sets balance to 1000 minutes and `profile_type="hr_assessor"`.
+- Confirm Professional sets balance to 600 minutes and does not overwrite an existing legacy profile.
+- As admin, add minutes manually and confirm this still works as a secondary operation.
+- As admin, remove minutes manually and confirm this still works as a secondary operation.
 - Confirm Free/Personal + HR profile does not see HR buttons.
 - Confirm Premium + HR profile sees all 7 HR buttons.
 - Confirm Free + Personal Notes profile sees only basic actions.

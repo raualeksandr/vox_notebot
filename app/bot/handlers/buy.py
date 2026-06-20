@@ -16,6 +16,7 @@ from app.services.billing import (
     has_free_grant,
     mark_payment_as_paid_claimed,
 )
+from app.services.plans import get_plan
 from app.services.users import get_or_create_user
 
 
@@ -32,8 +33,22 @@ class Package:
 @router.message(Command("buy"))
 async def buy_command(message: Message) -> None:
     settings = get_settings()
+    free_plan = get_plan("free")
+    personal_plan = get_plan("personal")
+    premium_plan = get_plan("premium")
     await message.answer(
-        "Выберите пакет минут:",
+        "Тарифы:\n"
+        f"Free - {free_plan['minutes']} минут, fast-транскрибация, "
+        "Очистить и Саммари.\n"
+        f"Personal - {personal_plan['price']} RUB / "
+        f"{personal_plan['minutes']} минут, личные заметки.\n"
+        f"Premium HR - {premium_plan['price']} RUB / "
+        f"{premium_plan['minutes']} минут, premium-транскрибация и "
+        "HR-функции для оценщиков.\n\n"
+        "Professional - internal/legacy, не основной публичный тариф.\n\n"
+        "После оплаты администратор подтверждает тариф и выдаёт пакет минут. "
+        "Автоматической оплаты пока нет.\n\n"
+        "Выберите тариф:",
         reply_markup=packages_keyboard(
             free_minutes=settings.default_free_minutes,
             friends_minutes=settings.friends_package_minutes,
@@ -80,12 +95,12 @@ async def select_package(callback: CallbackQuery, session: AsyncSession) -> None
 
     packages = {
         "friends": Package(
-            "Friends",
+            "Personal",
             settings.friends_package_minutes,
             settings.friends_package_price,
         ),
         "power": Package(
-            "Power",
+            "Premium HR",
             settings.power_package_minutes,
             settings.power_package_price,
         ),

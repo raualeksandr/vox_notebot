@@ -13,10 +13,10 @@ def admin_menu_keyboard() -> InlineKeyboardMarkup:
     labels = (
         ("Pending payments", "admin:pending_payments"),
         ("Find user", "admin:find_user"),
-        ("Add minutes", "admin:add_minutes"),
-        ("Remove minutes", "admin:remove_minutes"),
         ("User balance", "admin:user_balance"),
         ("💳 Сменить тариф", "admin:change_plan"),
+        ("➕ Добавить минуты вручную", "admin:add_minutes"),
+        ("➖ Списать минуты вручную", "admin:remove_minutes"),
         ("Stats", "admin:stats"),
     )
     return InlineKeyboardMarkup(

@@ -37,6 +37,11 @@ async def buy_button(message: Message) -> None:
     await buy_command(message)
 
 
+@router.message(F.text == "🛒 Тарифы")
+async def plans_button(message: Message) -> None:
+    await buy_command(message)
+
+
 @router.message(F.text == "⚙️ Настройка")
 async def setup_button(
     message: Message,

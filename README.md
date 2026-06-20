@@ -11,8 +11,7 @@ The current MVP focus is HR assessors and personal voice notes: send a voice not
 - Transcribes Telegram voice messages.
 - Tracks a minute balance and charges minutes only for successful transcription.
 - Provides text actions after transcription.
-- Runs a 5-step onboarding flow with two public profiles and stores `UserProfile.profile_type`.
-- Shows profile-specific actions only for the active profile.
+- Shows actions according to `User.current_plan` and the existing user profile.
 - Keeps the last successful transcriptions available through `/history`.
 - Supports manual payment claims and admin approval/rejection.
 - Uses guardrails so text-processing outputs stay artifact-style.
@@ -44,23 +43,19 @@ For the `personal_notes` profile, the post-transcription UI is intentionally sma
 - `🧠 Рефлексия`
 - `📅 План`
 
-### Onboarding
+### Start and Plans
 
-New users can complete a 5-step setup flow through `/start` or `/setup`. The public profile choice is limited to:
+`/start` shows the product description, main modes, and public tariffs. Users can send a voice message immediately; no setup questionnaire is required.
 
-- `📋 HR / оценка персонала`
-- `🧠 Личные заметки`
+Public tariffs:
 
-The flow then asks about preferred output, audio source, quality preference, and usage frequency.
+- Free: 30 minutes, fast transcription, clean text and summary.
+- Personal: 199 RUB, 300 minutes, Personal Notes actions.
+- Premium HR: 1290 RUB, 1000 minutes, premium transcription, HR assessor actions.
 
-The service layer calculates:
+Professional is an internal / legacy plan and is not presented as a primary public tariff.
 
-- profile type
-- recommended plan
-- recommended transcription quality
-- onboarding summary
-
-The Telegram flow saves this data in `UserProfile` and marks onboarding as completed. It does not change billing rules.
+`/setup` is deprecated. It remains as a safe legacy handler, but it no longer starts the questionnaire; access is determined by tariff.
 
 ### Profile-specific actions
 
@@ -92,6 +87,14 @@ Package settings are configured through environment variables. The current MVP d
 ### Admin flow
 
 Admins are configured with `ADMIN_TELEGRAM_IDS`. Admin tools include payment review, approve/reject flows, manual minute adjustments, and basic stats.
+The primary access-management action is assigning a plan. When an admin changes a user's plan, the bot sets `User.current_plan`, sets the remaining balance to the plan package minutes, and applies the default profile where appropriate:
+
+- Free: sets 30 remaining minutes; creates `personal_notes` only if the user has no profile.
+- Personal: sets 300 remaining minutes and `profile_type="personal_notes"`.
+- Premium HR: sets 1000 remaining minutes and `profile_type="hr_assessor"`.
+- Professional: sets 600 remaining minutes and leaves the existing legacy profile unchanged.
+
+Manual add/remove minutes remains available as an admin-only secondary operation.
 
 ## Supported profiles
 
@@ -111,7 +114,7 @@ Actions:
 
 ### PM / BA
 
-Internal / experimental / legacy profile. It is not shown in the public onboarding flow.
+Internal / experimental / legacy profile. It is not shown in the public UX.
 
 Profile key: `pm_ba`
 
@@ -124,7 +127,7 @@ Actions:
 
 ### Founder
 
-Internal / experimental / legacy profile. It is not shown in the public onboarding flow.
+Internal / experimental / legacy profile. It is not shown in the public UX.
 
 Profile key: `founder`
 
@@ -137,7 +140,7 @@ Actions:
 
 ### Student / Researcher
 
-Internal / experimental / legacy profile. It is not shown in the public onboarding flow.
+Internal / experimental / legacy profile. It is not shown in the public UX.
 
 Profile key: `student_researcher`
 
@@ -282,9 +285,9 @@ Short release smoke test:
 - `/history`
 - send one short voice note
 - run one universal action
-- confirm onboarding shows only HR / assessment and personal notes
-- confirm personal notes shows only clean, summary, tasks, reflection, and plan actions after transcription
-- confirm HR profile still shows the existing HR buttons
+- confirm `/start` shows product description and tariffs
+- confirm `/setup` says setup is no longer required
+- confirm tariff-based action gating after transcription
 - create and review one manual payment claim
 
 ## Known limitations / Next steps
@@ -300,7 +303,7 @@ Current limitations:
 Planned next steps:
 
 - Separate dev and production bots.
-- Add automated tests for onboarding, billing, action gating, and callback processing.
+- Add automated tests for billing, action gating, and callback processing.
 - Add premium transcription rerun when pricing and UX are ready.
 - Add exports after core flows stay stable.
 - Continue reducing duplication around action routing where it remains safe.

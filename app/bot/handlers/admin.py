@@ -16,16 +16,19 @@ from app.bot.keyboards.admin import (
     plan_selection_keyboard,
 )
 from app.config import get_settings
-from app.db.models import Payment, Transcription, User
+from app.db.models import Payment, Transcription, User, UserProfile
 from app.services.billing import (
     add_minutes,
     confirm_payment,
     create_balance_transaction,
     get_balance,
+    get_or_create_balance,
     get_pending_payments,
     reject_payment,
     remove_minutes,
+    set_balance_minutes,
 )
+from app.services.plans import get_default_profile_for_plan, get_plan_minutes
 from app.services.users import (
     get_or_create_user,
     get_user_by_id,
@@ -80,6 +83,18 @@ async def _format_user_plan_summary(session: AsyncSession, user: User) -> str:
         f"profile_type: {profile_type}\n"
         f"balance minutes: {remaining}"
     )
+
+
+async def _get_or_create_profile(
+    session: AsyncSession,
+    user_id: int,
+) -> UserProfile:
+    profile = await get_user_profile(session, user_id)
+    if profile is None:
+        profile = UserProfile(user_id=user_id)
+        session.add(profile)
+        await session.flush()
+    return profile
 
 
 @router.message(Command("admin"))
@@ -314,12 +329,50 @@ async def set_user_plan(
         await callback.answer("Пользователь не найден.", show_alert=True)
         return
 
+    old_plan = user.current_plan or "free"
+    old_balance = await get_or_create_balance(session, user.id)
+    old_balance_minutes = Decimal(old_balance.minutes_remaining)
+    old_profile = await get_user_profile(session, user.id)
+    old_profile_type = (
+        old_profile.profile_type if old_profile and old_profile.profile_type else "-"
+    )
+    package_minutes = get_plan_minutes(plan_key)
+    default_profile_type = get_default_profile_for_plan(plan_key)
+
     user.current_plan = plan_key
+    new_profile_type = old_profile_type
+    if plan_key in {"personal", "premium"}:
+        profile = await _get_or_create_profile(session, user.id)
+        profile.profile_type = default_profile_type
+        new_profile_type = profile.profile_type or "-"
+    elif plan_key == "free" and old_profile is None and default_profile_type:
+        profile = await _get_or_create_profile(session, user.id)
+        profile.profile_type = default_profile_type
+        new_profile_type = profile.profile_type or "-"
+
+    new_balance = await set_balance_minutes(session, user.id, package_minutes)
+    new_balance_minutes = Decimal(new_balance.minutes_remaining)
+    minutes_delta = new_balance_minutes - old_balance_minutes
+    await create_balance_transaction(
+        session,
+        user_id=user.id,
+        transaction_type="plan_assignment",
+        minutes_delta=minutes_delta,
+        reason=f"Plan assignment: {old_plan} -> {plan_key}",
+        admin_id=callback.from_user.id,
+    )
     await session.flush()
     await callback.answer("Тариф обновлён.")
     if callback.message:
         await callback.message.answer(
             f"Тариф пользователя обновлён: {ADMIN_PLAN_LABELS[plan_key]}\n\n"
+            f"old_plan: {old_plan}\n"
+            f"new_plan: {plan_key}\n"
+            f"old_balance: {old_balance_minutes} минут\n"
+            f"new_balance: {new_balance_minutes} минут\n"
+            f"Баланс установлен на пакет тарифа: {package_minutes} минут\n"
+            f"profile_type before: {old_profile_type}\n"
+            f"profile_type after: {new_profile_type}\n\n"
             f"{await _format_user_plan_summary(session, user)}"
         )
 

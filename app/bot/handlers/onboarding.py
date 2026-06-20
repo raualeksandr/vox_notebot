@@ -84,6 +84,18 @@ async def prompt_onboarding_start(message: Message) -> None:
     )
 
 
+async def _send_setup_deprecated(
+    message: Message,
+    *,
+    is_admin: bool = False,
+) -> None:
+    await message.answer(
+        "Настройка больше не требуется: доступ к функциям определяется тарифом. "
+        "Чтобы изменить тариф, оформите подписку или обратитесь к администратору.",
+        reply_markup=user_menu_keyboard(is_admin=is_admin),
+    )
+
+
 async def start_onboarding(message: Message, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(OnboardingStates.waiting_for_goal)
@@ -193,27 +205,25 @@ async def setup_command(
 ) -> None:
     if message.from_user is None:
         return
-    await _get_or_create_current_user(message, session)
-    await message.answer(
-        "Бот помогает превращать голосовые заметки в аккуратные тексты, "
-        "саммари и рабочие материалы. Основные режимы: личные заметки "
-        "и HR-оценка."
-    )
-    await start_onboarding(message, state)
+    _, is_admin = await _get_or_create_current_user(message, session)
+    await state.clear()
+    await _send_setup_deprecated(message, is_admin=is_admin)
 
 
 @router.callback_query(F.data == "onboarding:start")
 async def onboarding_start_callback(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await state.clear()
     if callback.message is not None:
-        await start_onboarding(callback.message, state)
+        await _send_setup_deprecated(callback.message)
 
 
 @router.callback_query(F.data == "onboarding:restart")
 async def onboarding_restart_callback(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await state.clear()
     if callback.message is not None:
-        await start_onboarding(callback.message, state)
+        await _send_setup_deprecated(callback.message)
 
 
 @router.callback_query(F.data == "onboarding:skip")
@@ -223,27 +233,10 @@ async def onboarding_skip_callback(
     state: FSMContext,
 ) -> None:
     await callback.answer()
-    user, is_admin = await _get_or_create_current_user(callback, session)
-    await upsert_user_profile(
-        session,
-        user,
-        {
-            "goal": "personal_notes",
-            "preferred_output": "summary",
-            "audio_source": "personal_thoughts",
-            "quality_preference": "cheap",
-            "usage_frequency": "unknown",
-        },
-    )
-    if not user.current_plan:
-        user.current_plan = "free"
-    user.transcription_quality = "fast"
-    await session.flush()
+    _, is_admin = await _get_or_create_current_user(callback, session)
     await state.clear()
-    await callback.message.answer(
-        "Настройку пропустили. Я буду использовать базовый профиль личных заметок.",
-        reply_markup=user_menu_keyboard(is_admin=is_admin),
-    )
+    if callback.message is not None:
+        await _send_setup_deprecated(callback.message, is_admin=is_admin)
 
 
 @router.callback_query(OnboardingStates.waiting_for_goal, F.data.startswith("onboarding:goal:"))
