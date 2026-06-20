@@ -79,20 +79,39 @@ ALL_FEATURES = [
 
 PLANS: dict[str, PlanConfig] = {
     "free": {
+        "label": "Free",
+        "display_label": "Free",
         "minutes": 30,
         "quality": "fast",
+        "transcription": "fast",
+        "actions": "basic",
         "features": [*CORE_FEATURES],
         "premium_rerun": False,
     },
     "personal": {
+        "label": "Personal",
+        "display_label": "Personal",
         "minutes": 300,
+        "days": 60,
         "quality": "fast",
+        "transcription": "fast",
+        "actions": "personal_notes",
+        "price": 199,
+        "currency": "RUB",
         "features": [*CORE_FEATURES, "tasks"],
         "premium_rerun": False,
     },
     "professional": {
+        "label": "Professional",
+        "display_label": "Professional",
+        "status": "legacy/internal",
         "minutes": 600,
-        "quality": "fast",
+        "days": 60,
+        "quality": "premium",
+        "transcription": "premium",
+        "actions": "pm_ba",
+        "price": 590,
+        "currency": "RUB",
         "features": [
             *CORE_FEATURES,
             "tasks",
@@ -107,8 +126,15 @@ PLANS: dict[str, PlanConfig] = {
         "premium_rerun": True,
     },
     "premium": {
+        "label": "Premium HR",
+        "display_label": "Premium HR",
         "minutes": 1000,
+        "days": 60,
         "quality": "premium",
+        "transcription": "premium",
+        "actions": "hr",
+        "price": 1290,
+        "currency": "RUB",
         "features": "all",
         "premium_rerun": True,
     },
@@ -197,6 +223,33 @@ def get_profile(profile_key: str) -> ProfileConfig | None:
     return PROFILES.get(profile_key)
 
 
+def get_text_model_for_plan(plan_key: str, profile_type: str | None = None) -> str:
+    settings = get_settings()
+    if plan_key == "free":
+        return settings.text_model_free
+    if plan_key == "personal":
+        return settings.text_model_paid
+    if plan_key == "professional":
+        return settings.text_model_legacy
+    if plan_key == "premium":
+        if profile_type == "hr_assessor":
+            return settings.text_model_hr
+        return settings.text_model_paid
+    return settings.text_model or settings.text_model_paid
+
+
+def get_transcription_model_for_plan(
+    plan_key: str,
+    profile_type: str | None = None,
+) -> str:
+    settings = get_settings()
+    if plan_key in {"free", "personal"}:
+        return settings.transcription_model_fast
+    if plan_key in {"professional", "premium"}:
+        return settings.transcription_model_premium
+    return settings.transcription_model_fast or settings.transcription_model
+
+
 def _normalize_features(features: list[str] | str) -> list[str]:
     if features == "all":
         return list(ALL_FEATURES)
@@ -226,12 +279,10 @@ def has_feature(user: object, feature_key: str) -> bool:
 
 
 def get_transcription_model_for_user(user: object) -> str:
-    settings = get_settings()
     plan_key = getattr(user, "current_plan", "free") or "free"
-    quality = getattr(user, "transcription_quality", "fast") or "fast"
-    if quality == "premium" or plan_key == "premium":
-        return settings.transcription_model_premium
-    return settings.transcription_model_fast
+    profile = getattr(user, "__dict__", {}).get("profile")
+    profile_key = getattr(profile, "profile_type", None)
+    return get_transcription_model_for_plan(plan_key, profile_key)
 
 
 def can_use_premium_rerun(user: object) -> bool:

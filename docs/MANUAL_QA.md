@@ -34,38 +34,45 @@ Expected result: commands respond without errors, and existing users are not for
 
 ## D. Universal actions
 
-For one successful transcription, click:
+For a Free user, confirm only these actions are visible after transcription:
+
+- `🧹 Очистить`
+- `📝 Саммари`
+
+For a Personal user with `profile_type="personal_notes"`, confirm these actions are visible:
 
 - `🧹 Очистить`
 - `📝 Саммари`
 - `✅ Задачи`
-- `🔍 Ключевые мысли`
-- `❓ Вопросы`
-- `📌 Следующие шаги`
+- `🧠 Рефлексия`
+- `📅 План`
 
 Expected result: each action returns a structured artifact and does not deduct extra minutes.
 
 ## E. Role-specific actions
 
-For each profile, run at least one role-specific action:
+For each eligible paid profile, run at least one role-specific action:
 
-- HR: click one of `📋 HR-саммари`, `🧠 Компетенции`, `⚖️ Факты / интерпретации`, `🧾 HR-отчёт`.
-- PM/BA: click one of `📌 Протокол`, `🧩 User Story`, `☑️ Критерии`, `⚠️ Риски`.
-- Founder: click one of `🚀 Идея`, `🧪 Гипотезы`, `🧱 MVP`, `🎤 Pitch`.
-- Student/Researcher: click one of `🎓 Конспект`, `🔍 Исследование`, `🧠 Объяснить проще`, `🗂️ Карточки`.
-- Personal Notes: click one of `🧠 Рефлексия`, `🗂️ Категории`, `🏷️ Теги`, `📅 План`.
+- Premium HR: click one of `📋 HR-саммари`, `🧠 Компетенции`, `⚖️ Факты / интерпретации`, `🧾 HR-отчёт`.
+- Professional/Premium PM/BA: click one of `📌 Протокол`, `🧩 User Story`, `☑️ Критерии`, `⚠️ Риски`.
+- Professional/Premium Founder: click one of `🚀 Идея`, `🧪 Гипотезы`, `🧱 MVP`, `🎤 Pitch`.
+- Professional/Premium Student/Researcher: click one of `🎓 Конспект`, `🔍 Исследование`, `🧠 Объяснить проще`, `🗂️ Карточки`.
+- Personal/Premium Personal Notes: click one of `🧠 Рефлексия`, `📅 План`.
 
 Expected result: each action returns a role-specific artifact and does not deduct extra minutes.
 
 ## F. Gating
 
-- Set profile to HR / Assessor and confirm only HR role buttons are shown.
-- Set profile to PM / BA and confirm only PM/BA role buttons are shown.
-- Set profile to Founder and confirm only Founder role buttons are shown.
-- Set profile to Student / Researcher and confirm only Student/Researcher role buttons are shown.
-- Set profile to Personal Notes and confirm only Personal Notes role buttons are shown.
+- Set profile to HR / Assessor with Free plan and confirm HR buttons are not shown.
+- Set profile to HR / Assessor with Premium plan and confirm HR buttons are shown.
+- Set profile to Personal Notes with Free plan and confirm only basic actions are shown.
+- Set profile to Personal Notes with Personal plan and confirm personal buttons are shown.
+- Set legacy profile PM/BA, Founder, or Student/Researcher with Free plan and confirm only basic actions are shown.
+- Set legacy profile PM/BA, Founder, or Student/Researcher with Professional/Premium plan and confirm matching legacy role buttons are shown.
 - Confirm users do not see buttons for other profiles.
 - If testing callbacks manually, confirm a mismatched profile receives `Эта функция недоступна для вашего профиля.`
+- If testing HR callbacks manually without Premium, confirm the user receives `HR-функции доступны на тарифе Premium HR.`
+- If testing Personal callbacks manually without Personal/Premium, confirm the user receives `Эта функция доступна на тарифе Personal.`
 
 ## G. History
 
@@ -73,7 +80,10 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - Confirm latest successful transcriptions are listed.
 - Click `📄 Текст` and confirm full text opens.
 - Run one universal action from history.
-- Confirm role-specific buttons in history match the current `UserProfile.profile_type`.
+- Confirm Free users see only basic actions in history.
+- Confirm HR buttons in history are visible only for Premium + `hr_assessor`.
+- Confirm Personal buttons in history are visible only for Personal/Premium + `personal_notes`.
+- Confirm legacy buttons in history are visible only for Professional/Premium legacy profiles.
 
 ## H. Payments/admin
 
@@ -84,6 +94,11 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - As admin, reject another payment.
 - As admin, add minutes manually.
 - As admin, remove minutes manually.
+- As admin, open `/admin`, click `💳 Сменить тариф`, enter a user's Telegram ID, and switch plans.
+- Confirm Free + HR profile does not see HR buttons.
+- Confirm Premium + HR profile sees HR buttons.
+- Confirm Free + Personal Notes profile sees only basic actions.
+- Confirm Personal + Personal Notes profile sees personal buttons.
 - As admin, check stats.
 
 Expected result: balances and payment statuses update correctly.

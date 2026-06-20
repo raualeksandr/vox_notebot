@@ -21,20 +21,18 @@ The current MVP focus is HR assessors and personal voice notes: send a voice not
 
 ### Voice transcription
 
-The user sends a Telegram voice message. The bot checks the user's balance, downloads the audio, transcribes it with the configured OpenAI transcription model, saves the transcript, deducts rounded-up minutes only after success, and shows action buttons for the transcript.
+The user sends a Telegram voice message. The bot checks the user's balance, downloads the audio, transcribes it with the transcription model selected for the user's plan, saves the transcript, deducts rounded-up minutes only after success, and shows action buttons for the transcript.
 
-Current voice flow uses the standard configured transcription model. Premium transcription is planned as a future option and is not enabled as the default voice path.
+Free and Personal plans use fast transcription. Professional and Premium plans use premium transcription. Unknown plans fall back to the fast transcription model or the legacy `TRANSCRIPTION_MODEL` setting.
 
 ### Text processing actions
 
-Universal actions are available after transcription and in `/history`:
+Visible actions after transcription and in `/history` depend on the current plan and profile:
 
-- `🧹 Очистить`
-- `📝 Саммари`
-- `✅ Задачи`
-- `🔍 Ключевые мысли`
-- `❓ Вопросы`
-- `📌 Следующие шаги`
+- Free: basic actions only (`🧹 Очистить`, `📝 Саммари`).
+- Personal + `personal_notes`: basic actions, `✅ Задачи`, `🧠 Рефлексия`, and `📅 План`.
+- Premium HR + `hr_assessor`: basic actions and HR role-specific actions.
+- Professional: internal / legacy plan for legacy profile actions.
 
 These actions do not deduct additional minutes in the current MVP.
 
@@ -66,7 +64,7 @@ The Telegram flow saves this data in `UserProfile` and marks onboarding as compl
 
 ### Profile-specific actions
 
-Role actions are configured in `app/bot/role_actions.py`. The bot shows only the action rows for the current `UserProfile.profile_type`.
+Role actions are configured in `app/bot/role_actions.py`. The bot shows action rows only when both `UserProfile.profile_type` and `User.current_plan` allow them.
 
 Supported profile-specific actions:
 
@@ -79,11 +77,11 @@ Internal / legacy profile-specific actions remain in the code and callback routi
 - Founder
 - Student / Researcher
 
-Profile-specific actions do not deduct additional minutes in the current MVP.
+Profile-specific actions do not deduct additional minutes in the current MVP. HR actions are Premium HR only. Personal Notes actions are available on Personal and Premium. Legacy PM/BA, Founder, and Student/Researcher actions remain available only for legacy users on Professional or Premium.
 
 ### History
 
-`/history` shows the latest successful transcriptions. Users can open the full text and run the same visible actions for their profile. If their current profile has role-specific actions, the matching buttons are also shown for historical transcriptions.
+`/history` shows the latest successful transcriptions. Users can open the full text and run the same actions currently visible for their plan and profile. HR buttons are shown only for Premium HR users, Personal Notes buttons only for Personal/Premium users, and Free users see only basic actions.
 
 ### Balance / manual payments
 
@@ -249,6 +247,10 @@ Required or commonly used variables:
 - `DATABASE_URL`
 - `ADMIN_TELEGRAM_IDS`
 - `TEXT_MODEL`
+- `TEXT_MODEL_FREE`
+- `TEXT_MODEL_PAID`
+- `TEXT_MODEL_HR`
+- `TEXT_MODEL_LEGACY`
 - `TRANSCRIPTION_MODEL`
 - `TRANSCRIPTION_MODEL_FAST`
 - `TRANSCRIPTION_MODEL_PREMIUM`
@@ -262,7 +264,7 @@ Required or commonly used variables:
 - `FRIENDS_PACKAGE_PRICE`
 - `POWER_PACKAGE_PRICE`
 
-`TRANSCRIPTION_MODEL` is kept for backward compatibility. If `TRANSCRIPTION_MODEL_FAST` is empty, the app falls back to `TRANSCRIPTION_MODEL` or `gpt-4o-mini-transcribe`. `TRANSCRIPTION_MODEL_PREMIUM` is configured for future premium transcription support.
+`TRANSCRIPTION_MODEL` and `TEXT_MODEL` are kept for backward compatibility. If `TRANSCRIPTION_MODEL_FAST` is empty, the app falls back to `TRANSCRIPTION_MODEL` or `gpt-4o-mini-transcribe`. If a plan-specific text model is empty, the app falls back to `TEXT_MODEL`, `TEXT_MODEL_PAID`, or the safe defaults in `app/config.py`.
 
 ## Manual QA checklist
 
@@ -288,7 +290,7 @@ Current limitations:
 
 - No automated test suite yet.
 - No separate dev/prod bot setup documented in code.
-- Premium transcription rerun is planned, not enabled as a default user flow.
+- Premium transcription is selected by plan; separate premium rerun UX is planned for later.
 - Telegram Stars are planned for later, not implemented.
 - Export to Notion, Google Docs, Bear, or similar tools is planned for later, not implemented.
 

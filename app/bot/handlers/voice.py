@@ -14,7 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.keyboards.user import transcription_actions_keyboard
 from app.bot.message_utils import answer_text_chunks, send_text_chunks
-from app.bot.role_actions import ROLE_ACTIONS_BY_CALLBACK_KEY, role_action_keyboard_flags
+from app.bot.role_actions import (
+    ROLE_ACTIONS_BY_CALLBACK_KEY,
+    can_use_role_callback,
+    can_use_universal_callback,
+    get_visible_universal_callback_keys,
+    role_action_denial_message,
+    role_action_keyboard_flags,
+)
 from app.config import get_settings
 from app.db.models import Transcription
 from app.services.billing import (
@@ -23,6 +30,10 @@ from app.services.billing import (
     remove_minutes,
 )
 from app.services.openai_client import OpenAIKeyNotConfiguredError
+from app.services.plans import (
+    get_text_model_for_plan,
+    get_transcription_model_for_plan,
+)
 from app.services.text_processing import (
     clean_text,
     extract_key_points,
@@ -30,6 +41,7 @@ from app.services.text_processing import (
     extract_tasks,
     suggest_next_steps,
     summarize_text,
+    text_model_override,
 )
 from app.services.transcription import get_user_transcription, transcribe_audio
 from app.services.users import get_or_create_user, get_user_by_telegram_id, get_user_profile
@@ -47,6 +59,14 @@ TEXT_PROCESSORS: dict[str, tuple[str | None, TextProcessor]] = {
     "questions": (None, extract_questions),
     "next_steps": (None, suggest_next_steps),
 }
+
+
+def _universal_callback_key(action: str) -> str:
+    if action in {"clean", "summary", "tasks"}:
+        return f"text:{action}"
+    return action
+
+
 def _format_minutes(value: Decimal) -> str:
     return f"{value.normalize():f}"
 
@@ -92,6 +112,13 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
 
     temporary_path: Path | None = None
     try:
+        user_profile = await get_user_profile(session, user.id)
+        profile_type = user_profile.profile_type if user_profile is not None else None
+        transcription_model = get_transcription_model_for_plan(
+            user.current_plan or "free",
+            profile_type,
+        )
+
         with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as temp_file:
             temporary_path = Path(temp_file.name)
 
@@ -109,7 +136,7 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
             user_id=user.id,
             audio_duration_seconds=duration_seconds,
             transcript_text=None,
-            model=settings.transcription_model,
+            model=transcription_model,
             status="pending",
             cost_estimate=Decimal("0"),
         )
@@ -117,7 +144,10 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
         await session.flush()
 
         try:
-            transcript_text = await transcribe_audio(str(temporary_path))
+            transcript_text = await transcribe_audio(
+                str(temporary_path),
+                model=transcription_model,
+            )
         except OpenAIKeyNotConfiguredError:
             transcription.status = "failed"
             await session.flush()
@@ -162,14 +192,19 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
             f"Остаток: {_format_minutes(balance.minutes_remaining)} мин."
         )
         await answer_text_chunks(message, transcript_text)
-        user_profile = await get_user_profile(session, user.id)
         role_keyboard_flags = role_action_keyboard_flags(
-            user_profile.profile_type if user_profile is not None else None,
+            profile_type,
+            user.current_plan,
+        )
+        visible_universal_callback_keys = get_visible_universal_callback_keys(
+            profile_type,
+            user.current_plan,
         )
         await message.answer(
             "Что сделать с транскрипцией?",
             reply_markup=transcription_actions_keyboard(
                 transcription.id,
+                visible_universal_callback_keys=visible_universal_callback_keys,
                 **role_keyboard_flags,
             ),
         )
@@ -353,8 +388,24 @@ async def _process_transcription_action(
         return
 
     title, processor = processor_config
+    user_profile = await get_user_profile(session, user.id)
+    profile_type = user_profile.profile_type if user_profile is not None else None
+    plan_key = user.current_plan or "free"
+    if not can_use_universal_callback(
+        _universal_callback_key(action),
+        profile_type,
+        plan_key,
+    ):
+        await callback.bot.send_message(
+            callback.from_user.id,
+            "Эта функция недоступна на вашем тарифе.",
+        )
+        return
+
+    text_model = get_text_model_for_plan(plan_key, profile_type)
     try:
-        result = await processor(transcription.transcript_text)
+        with text_model_override(text_model):
+            result = await processor(transcription.transcript_text)
     except (OpenAIKeyNotConfiguredError, OpenAIError, ValueError, RuntimeError):
         logger.exception("Text processing failed for transcription %s", transcription.id)
         await callback.bot.send_message(
@@ -402,8 +453,21 @@ async def _process_role_transcription_action(
         )
         return
 
+    plan_key = user.current_plan or "free"
+    if not can_use_role_callback(action, user_profile.profile_type, plan_key):
+        await callback.bot.send_message(
+            callback.from_user.id,
+            role_action_denial_message(expected_profile_type),
+        )
+        return
+
+    text_model = get_text_model_for_plan(
+        plan_key,
+        user_profile.profile_type,
+    )
     try:
-        result = await role_action.processor(transcription.transcript_text)
+        with text_model_override(text_model):
+            result = await role_action.processor(transcription.transcript_text)
     except (OpenAIKeyNotConfiguredError, OpenAIError, ValueError, RuntimeError):
         logger.exception(
             "Role-specific text processing failed for transcription %s",

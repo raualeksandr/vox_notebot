@@ -9,7 +9,12 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.keyboards.admin import admin_menu_keyboard, payment_review_keyboard
+from app.bot.keyboards.admin import (
+    ADMIN_PLAN_LABELS,
+    admin_menu_keyboard,
+    payment_review_keyboard,
+    plan_selection_keyboard,
+)
 from app.config import get_settings
 from app.db.models import Payment, Transcription, User
 from app.services.billing import (
@@ -25,6 +30,7 @@ from app.services.users import (
     get_or_create_user,
     get_user_by_id,
     get_user_by_telegram_id,
+    get_user_profile,
     get_user_by_username,
 )
 
@@ -36,6 +42,7 @@ class AdminStates(StatesGroup):
     lookup_user = State()
     adjustment_target = State()
     adjustment_minutes = State()
+    plan_target = State()
 
 
 def _is_admin(telegram_id: int) -> bool:
@@ -58,6 +65,21 @@ async def _send_notification(
         await message.bot.send_message(telegram_id, text)
     except TelegramAPIError:
         pass
+
+
+async def _format_user_plan_summary(session: AsyncSession, user: User) -> str:
+    profile = await get_user_profile(session, user.id)
+    balance = await get_balance(session, user.id)
+    username = f"@{user.username}" if user.username else "-"
+    profile_type = profile.profile_type if profile and profile.profile_type else "-"
+    remaining = balance.minutes_remaining if balance else Decimal("0")
+    return (
+        f"Telegram ID: {user.telegram_id}\n"
+        f"Username: {username}\n"
+        f"current_plan: {user.current_plan}\n"
+        f"profile_type: {profile_type}\n"
+        f"balance minutes: {remaining}"
+    )
 
 
 @router.message(Command("admin"))
@@ -228,6 +250,78 @@ async def show_user_lookup(
         f"Баланс: {remaining} минут"
     )
     await state.clear()
+
+
+@router.callback_query(F.data == "admin:change_plan")
+async def request_plan_target(
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.plan_target)
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer("Введите Telegram ID пользователя.")
+
+
+@router.message(AdminStates.plan_target)
+async def receive_plan_target(
+    message: Message,
+    state: FSMContext,
+    session: AsyncSession,
+) -> None:
+    if message.from_user is None or not _is_admin(message.from_user.id):
+        await state.clear()
+        await message.answer("Нет доступа")
+        return
+
+    user = await _resolve_user(session, message.text or "")
+    if user is None:
+        await message.answer("Пользователь не найден.")
+        return
+
+    await state.clear()
+    await message.answer(
+        await _format_user_plan_summary(session, user),
+        reply_markup=plan_selection_keyboard(user.id),
+    )
+
+
+@router.callback_query(F.data.startswith("admin:plan:set:"))
+async def set_user_plan(
+    callback: CallbackQuery,
+    session: AsyncSession,
+) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    callback_parts = (callback.data or "").split(":")
+    if len(callback_parts) != 5 or not callback_parts[4].isdigit():
+        await callback.answer("Некорректные данные.", show_alert=True)
+        return
+
+    plan_key = callback_parts[3]
+    if plan_key not in ADMIN_PLAN_LABELS:
+        await callback.answer("Неизвестный тариф.", show_alert=True)
+        return
+
+    user = await get_user_by_id(session, int(callback_parts[4]))
+    if user is None:
+        await callback.answer("Пользователь не найден.", show_alert=True)
+        return
+
+    user.current_plan = plan_key
+    await session.flush()
+    await callback.answer("Тариф обновлён.")
+    if callback.message:
+        await callback.message.answer(
+            f"Тариф пользователя обновлён: {ADMIN_PLAN_LABELS[plan_key]}\n\n"
+            f"{await _format_user_plan_summary(session, user)}"
+        )
 
 
 @router.callback_query(F.data.in_({"admin:add_minutes", "admin:remove_minutes"}))

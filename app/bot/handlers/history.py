@@ -7,7 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.keyboards.user import history_transcription_keyboard
 from app.bot.message_utils import send_text_chunks
-from app.bot.role_actions import role_action_keyboard_flags
+from app.bot.role_actions import (
+    get_visible_universal_callback_keys,
+    role_action_keyboard_flags,
+)
 from app.config import get_settings
 from app.services.transcription import (
     get_recent_transcriptions,
@@ -47,8 +50,14 @@ async def history_command(message: Message, session: AsyncSession) -> None:
         return
 
     user_profile = await get_user_profile(session, user.id)
+    profile_type = user_profile.profile_type if user_profile is not None else None
     role_keyboard_flags = role_action_keyboard_flags(
-        user_profile.profile_type if user_profile is not None else None,
+        profile_type,
+        user.current_plan,
+    )
+    visible_universal_callback_keys = get_visible_universal_callback_keys(
+        profile_type,
+        user.current_plan,
     )
     await message.answer("Ваши последние транскрипции:")
     for transcription in transcriptions:
@@ -63,6 +72,7 @@ async def history_command(message: Message, session: AsyncSession) -> None:
             f"{_preview(transcription.transcript_text or '')}",
             reply_markup=history_transcription_keyboard(
                 transcription.id,
+                visible_universal_callback_keys=visible_universal_callback_keys,
                 **role_keyboard_flags,
             ),
         )

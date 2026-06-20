@@ -7,7 +7,7 @@ from aiogram.types import (
     ReplyKeyboardMarkup,
 )
 
-from app.bot.role_actions import ROLE_ACTIONS
+from app.bot.role_actions import ROLE_ACTIONS, PERSONAL_NOTES_ROLE_CALLBACKS
 
 
 UNIVERSAL_ACTION_ROWS = (
@@ -24,18 +24,6 @@ UNIVERSAL_ACTION_ROWS = (
         ("📌 Следующие шаги", "next_steps"),
     ),
 )
-
-PERSONAL_NOTES_UNIVERSAL_CALLBACKS = {
-    "text:clean",
-    "text:summary",
-    "text:tasks",
-}
-
-PERSONAL_NOTES_ROLE_CALLBACKS = {
-    "reflection",
-    "action_plan",
-}
-
 
 def user_menu_keyboard(*, is_admin: bool = False) -> ReplyKeyboardMarkup:
     keyboard = [
@@ -162,15 +150,6 @@ def _universal_action_rows(
     return rows
 
 
-def _visible_universal_callback_keys(
-    *,
-    include_personal_notes_actions: bool,
-) -> set[str] | None:
-    if include_personal_notes_actions:
-        return PERSONAL_NOTES_UNIVERSAL_CALLBACKS
-    return None
-
-
 def _visible_role_callback_keys(profile_type: str) -> set[str] | None:
     if profile_type == "personal_notes":
         return PERSONAL_NOTES_ROLE_CALLBACKS
@@ -258,6 +237,7 @@ def _enabled_role_profiles(
 def transcription_actions_keyboard(
     transcription_id: int,
     *,
+    visible_universal_callback_keys: set[str] | None = None,
     include_hr_actions: bool = False,
     include_pm_ba_actions: bool = False,
     include_founder_actions: bool = False,
@@ -266,9 +246,7 @@ def transcription_actions_keyboard(
 ) -> InlineKeyboardMarkup:
     inline_keyboard = _universal_action_rows(
         transcription_id,
-        visible_callback_keys=_visible_universal_callback_keys(
-            include_personal_notes_actions=include_personal_notes_actions,
-        ),
+        visible_callback_keys=visible_universal_callback_keys,
     )
     _append_role_action_rows(
         inline_keyboard,
@@ -288,6 +266,7 @@ def transcription_actions_keyboard(
 def history_transcription_keyboard(
     transcription_id: int,
     *,
+    visible_universal_callback_keys: set[str] | None = None,
     include_hr_actions: bool = False,
     include_pm_ba_actions: bool = False,
     include_founder_actions: bool = False,
@@ -296,9 +275,7 @@ def history_transcription_keyboard(
 ) -> InlineKeyboardMarkup:
     inline_keyboard = _history_action_rows(
         transcription_id,
-        visible_callback_keys=_visible_universal_callback_keys(
-            include_personal_notes_actions=include_personal_notes_actions,
-        ),
+        visible_callback_keys=visible_universal_callback_keys,
     )
     _append_role_action_rows(
         inline_keyboard,

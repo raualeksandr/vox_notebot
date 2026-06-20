@@ -1,21 +1,27 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.db.models import Transcription
-from app.services.openai_client import (
-    OpenAIKeyNotConfiguredError,
-    get_openai_client,
-)
+from app.services.openai_client import get_openai_client
+from app.services.plans import get_transcription_model_for_plan
 
 
-async def transcribe_audio(file_path: str) -> str:
+async def transcribe_audio(
+    file_path: str,
+    *,
+    plan_key: str = "free",
+    profile_type: str | None = None,
+    model: str | None = None,
+) -> str:
     """Transcribe an audio file with the configured OpenAI audio model."""
-    settings = get_settings()
+    transcription_model = model or get_transcription_model_for_plan(
+        plan_key,
+        profile_type,
+    )
     client = get_openai_client()
     with open(file_path, "rb") as audio_file:
         response = await client.audio.transcriptions.create(
-            model=settings.transcription_model,
+            model=transcription_model,
             file=audio_file,
         )
 

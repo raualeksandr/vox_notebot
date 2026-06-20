@@ -52,14 +52,18 @@ class Settings(BaseSettings):
         alias="TRANSCRIPTION_MODEL",
     )
     transcription_model_fast: str = Field(
-        default="",
+        default="gpt-4o-mini-transcribe",
         alias="TRANSCRIPTION_MODEL_FAST",
     )
     transcription_model_premium: str = Field(
         default="gpt-4o-transcribe",
         alias="TRANSCRIPTION_MODEL_PREMIUM",
     )
-    text_model: str = Field(default="gpt-5.4-nano", alias="TEXT_MODEL")
+    text_model: str = Field(default="gpt-5.4-mini", alias="TEXT_MODEL")
+    text_model_free: str = Field(default="gpt-5.4-mini", alias="TEXT_MODEL_FREE")
+    text_model_paid: str = Field(default="gpt-5.4-mini", alias="TEXT_MODEL_PAID")
+    text_model_hr: str = Field(default="gpt-5.4", alias="TEXT_MODEL_HR")
+    text_model_legacy: str = Field(default="gpt-5.4-mini", alias="TEXT_MODEL_LEGACY")
 
     @field_validator("admin_telegram_ids", mode="before")
     @classmethod
@@ -71,13 +75,23 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def set_transcription_model_fallbacks(self) -> "Settings":
+    def set_model_fallbacks(self) -> "Settings":
         if not self.transcription_model_fast.strip():
             self.transcription_model_fast = (
                 self.transcription_model.strip() or "gpt-4o-mini-transcribe"
             )
         if not self.transcription_model_premium.strip():
             self.transcription_model_premium = "gpt-4o-transcribe"
+        if not self.text_model.strip():
+            self.text_model = self.text_model_paid.strip() or "gpt-5.4-mini"
+        if not self.text_model_free.strip():
+            self.text_model_free = self.text_model.strip() or "gpt-5.4-mini"
+        if not self.text_model_paid.strip():
+            self.text_model_paid = self.text_model.strip() or "gpt-5.4-mini"
+        if not self.text_model_hr.strip():
+            self.text_model_hr = self.text_model_paid.strip() or "gpt-5.4"
+        if not self.text_model_legacy.strip():
+            self.text_model_legacy = self.text_model_paid.strip() or "gpt-5.4-mini"
         return self
 
     def is_admin(self, telegram_id: int) -> bool:

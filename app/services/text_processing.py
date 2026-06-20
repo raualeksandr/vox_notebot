@@ -1,8 +1,17 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+
 from openai import BadRequestError
 
 from app.config import get_settings
 from app.services.openai_client import get_openai_client
 
+
+TEXT_MODEL_OVERRIDE: ContextVar[str | None] = ContextVar(
+    "TEXT_MODEL_OVERRIDE",
+    default=None,
+)
 
 TEXT_PROCESSING_GUARDRAILS = """
 Правила ответа:
@@ -37,7 +46,21 @@ def remove_conversational_tail(text: str) -> str:
     return "\n".join(lines).rstrip()
 
 
-async def _process_text(text: str, instructions: str) -> str:
+@contextmanager
+def text_model_override(model: str | None) -> Iterator[None]:
+    token = TEXT_MODEL_OVERRIDE.set(model.strip() if model else None)
+    try:
+        yield
+    finally:
+        TEXT_MODEL_OVERRIDE.reset(token)
+
+
+async def _process_text(
+    text: str,
+    instructions: str,
+    *,
+    model: str | None = None,
+) -> str:
     source_text = text.strip()
     if not source_text:
         raise ValueError("Text is empty.")
@@ -46,7 +69,7 @@ async def _process_text(text: str, instructions: str) -> str:
     client = get_openai_client()
     guarded_instructions = f"{instructions}\n\n{TEXT_PROCESSING_GUARDRAILS}"
     request = {
-        "model": settings.text_model,
+        "model": model or TEXT_MODEL_OVERRIDE.get() or settings.text_model,
         "instructions": guarded_instructions,
         "input": source_text,
         "temperature": 0.2,

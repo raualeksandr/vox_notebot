@@ -37,6 +37,26 @@ class RoleAction:
 
 RoleActionRows = tuple[tuple[RoleAction, ...], ...]
 
+BASIC_UNIVERSAL_CALLBACKS = {
+    "text:clean",
+    "text:summary",
+}
+PERSONAL_NOTES_UNIVERSAL_CALLBACKS = {
+    *BASIC_UNIVERSAL_CALLBACKS,
+    "text:tasks",
+}
+ALL_UNIVERSAL_CALLBACKS = {
+    *PERSONAL_NOTES_UNIVERSAL_CALLBACKS,
+    "key_points",
+    "questions",
+    "next_steps",
+}
+LEGACY_PROFILE_TYPES = {"pm_ba", "founder", "student_researcher"}
+PERSONAL_NOTES_ROLE_CALLBACKS = {
+    "reflection",
+    "action_plan",
+}
+
 
 ROLE_ACTIONS: dict[str, RoleActionRows] = {
     "hr_assessor": (
@@ -119,11 +139,70 @@ ROLE_ACTIONS_BY_CALLBACK_KEY = {
 }
 
 
-def role_action_keyboard_flags(profile_type: str | None) -> dict[str, bool]:
+def get_visible_universal_callback_keys(
+    profile_type: str | None,
+    plan_key: str | None,
+) -> set[str]:
+    plan_key = plan_key or "free"
+    if plan_key == "free":
+        return set(BASIC_UNIVERSAL_CALLBACKS)
+    if profile_type == "personal_notes" and plan_key in {"personal", "premium"}:
+        return set(PERSONAL_NOTES_UNIVERSAL_CALLBACKS)
+    if profile_type == "hr_assessor":
+        return set(BASIC_UNIVERSAL_CALLBACKS)
+    if profile_type in LEGACY_PROFILE_TYPES and plan_key in {"professional", "premium"}:
+        return set(ALL_UNIVERSAL_CALLBACKS)
+    return set(BASIC_UNIVERSAL_CALLBACKS)
+
+
+def can_use_universal_callback(
+    callback_key: str,
+    profile_type: str | None,
+    plan_key: str | None,
+) -> bool:
+    return callback_key in get_visible_universal_callback_keys(profile_type, plan_key)
+
+
+def can_use_role_actions(profile_type: str | None, plan_key: str | None) -> bool:
+    plan_key = plan_key or "free"
+    if profile_type == "hr_assessor":
+        return plan_key == "premium"
+    if profile_type == "personal_notes":
+        return plan_key in {"personal", "premium"}
+    if profile_type in LEGACY_PROFILE_TYPES:
+        return plan_key in {"professional", "premium"}
+    return False
+
+
+def can_use_role_callback(
+    callback_key: str,
+    profile_type: str | None,
+    plan_key: str | None,
+) -> bool:
+    return can_use_role_actions(profile_type, plan_key)
+
+
+def role_action_denial_message(profile_type: str) -> str:
+    if profile_type == "hr_assessor":
+        return "HR-функции доступны на тарифе Premium HR."
+    if profile_type == "personal_notes":
+        return "Эта функция доступна на тарифе Personal."
+    return "Эта функция недоступна на вашем тарифе."
+
+
+def role_action_keyboard_flags(
+    profile_type: str | None,
+    plan_key: str | None = None,
+) -> dict[str, bool]:
+    has_role_access = can_use_role_actions(profile_type, plan_key)
     return {
-        "include_hr_actions": profile_type == "hr_assessor",
-        "include_pm_ba_actions": profile_type == "pm_ba",
-        "include_founder_actions": profile_type == "founder",
-        "include_student_researcher_actions": profile_type == "student_researcher",
-        "include_personal_notes_actions": profile_type == "personal_notes",
+        "include_hr_actions": has_role_access and profile_type == "hr_assessor",
+        "include_pm_ba_actions": has_role_access and profile_type == "pm_ba",
+        "include_founder_actions": has_role_access and profile_type == "founder",
+        "include_student_researcher_actions": (
+            has_role_access and profile_type == "student_researcher"
+        ),
+        "include_personal_notes_actions": (
+            has_role_access and profile_type == "personal_notes"
+        ),
     }

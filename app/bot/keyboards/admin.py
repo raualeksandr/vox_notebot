@@ -1,6 +1,14 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
+ADMIN_PLAN_LABELS = {
+    "free": "Free",
+    "personal": "Personal",
+    "professional": "Professional",
+    "premium": "Premium HR",
+}
+
+
 def admin_menu_keyboard() -> InlineKeyboardMarkup:
     labels = (
         ("Pending payments", "admin:pending_payments"),
@@ -8,6 +16,7 @@ def admin_menu_keyboard() -> InlineKeyboardMarkup:
         ("Add minutes", "admin:add_minutes"),
         ("Remove minutes", "admin:remove_minutes"),
         ("User balance", "admin:user_balance"),
+        ("💳 Сменить тариф", "admin:change_plan"),
         ("Stats", "admin:stats"),
     )
     return InlineKeyboardMarkup(
@@ -31,5 +40,19 @@ def payment_review_keyboard(payment_id: int) -> InlineKeyboardMarkup:
                     callback_data=f"admin:payment:reject:{payment_id}",
                 ),
             ]
+        ]
+    )
+
+
+def plan_selection_keyboard(user_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=label,
+                    callback_data=f"admin:plan:set:{plan_key}:{user_id}",
+                )
+            ]
+            for plan_key, label in ADMIN_PLAN_LABELS.items()
         ]
     )
