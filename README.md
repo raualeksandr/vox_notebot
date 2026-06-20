@@ -48,11 +48,11 @@ For the `personal_notes` profile, the post-transcription UI is intentionally sma
 
 `/start` shows the product description, main modes, and public tariffs. Users can send a voice message immediately; no setup questionnaire is required.
 
-Public tariffs:
+Public tariffs shown in `/start` and `/buy`:
 
-- Free: 30 minutes, fast transcription, clean text and summary.
+- Free: 0 RUB, 30 minutes, fast transcription, clean text and summary.
 - Personal: 199 RUB, 300 minutes, Personal Notes actions.
-- Premium HR: 1290 RUB, 1000 minutes, premium transcription, HR assessor actions.
+- Premium HR: 1290 RUB, 1000 minutes, premium transcription, stronger HR text model, HR assessor actions.
 
 Professional is an internal / legacy plan and is not presented as a primary public tariff.
 
@@ -81,7 +81,11 @@ Profile-specific actions do not deduct additional minutes in the current MVP. HR
 
 ### Balance / manual payments
 
-`/balance` shows the user's Telegram ID, remaining minutes, and recent transactions. `/buy` shows the user's Telegram ID and starts the manual payment flow. Users should send the selected tariff, payment confirmation, and their Telegram ID to the administrator, then claim payment with the `Я оплатил` button. Admins can approve or reject the claim.
+`/balance` shows the user's Telegram ID, remaining minutes, and recent transactions. `/buy` is the manual sales/paywall screen: it shows Free, Personal, and Premium HR, explains what each tariff includes, shows the user's Telegram ID, and provides payment instructions. Professional is internal / legacy and is not a primary public option in `/buy`.
+
+Users should send the selected tariff, payment confirmation, and their Telegram ID to the administrator, then claim payment with the `Я оплатил` button. If payment details are not configured, `/buy` tells the user to уточнить реквизиты у администратора. Admins can approve or reject the claim.
+
+Plan-gated upgrade messages point users to `/buy` so they can see the tariff and manual payment instructions.
 
 Package settings are configured through environment variables. The current MVP does not use Telegram Stars.
 

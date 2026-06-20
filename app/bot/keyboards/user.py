@@ -62,19 +62,19 @@ def packages_keyboard(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=f"Free - {free_minutes} минут / месяц - 0 ₽",
+                    text=f"Free — 0 ₽",
                     callback_data="package:free",
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"Personal - {friends_minutes} минут - {friends_price:g} ₽",
+                    text=f"Personal — {friends_price:g} ₽",
                     callback_data="package:friends",
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"Premium HR - {power_minutes} минут - {power_price:g} ₽",
+                    text=f"Premium HR — {power_price:g} ₽",
                     callback_data="package:power",
                 )
             ],

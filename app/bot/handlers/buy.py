@@ -30,6 +30,23 @@ class Package:
     price: Decimal
 
 
+def _payment_details_text(settings) -> str:
+    details = []
+    if settings.sbp_phone.strip():
+        details.append(f"Номер: {settings.sbp_phone}")
+    if settings.sbp_bank_name.strip():
+        details.append(f"Банк: {settings.sbp_bank_name}")
+    if settings.sbp_recipient_name.strip():
+        details.append(f"Получатель: {settings.sbp_recipient_name}")
+    if settings.sbp_payment_comment.strip():
+        details.append(f"Комментарий: {settings.sbp_payment_comment}")
+
+    if not details:
+        return "Реквизиты оплаты уточните у администратора."
+
+    return "Реквизиты оплаты:\n" + "\n".join(details)
+
+
 @router.message(Command("buy"))
 async def buy_command(message: Message) -> None:
     settings = get_settings()
@@ -39,19 +56,44 @@ async def buy_command(message: Message) -> None:
     personal_plan = get_plan("personal")
     premium_plan = get_plan("premium")
     await message.answer(
-        "Тарифы:\n"
-        f"Free - {free_plan['minutes']} минут, fast-транскрибация, "
-        "Очистить и Саммари.\n"
-        f"Personal - {personal_plan['price']} RUB / "
-        f"{personal_plan['minutes']} минут, личные заметки.\n"
-        f"Premium HR - {premium_plan['price']} RUB / "
-        f"{premium_plan['minutes']} минут, premium-транскрибация и "
-        "HR-функции для оценщиков.\n\n"
-        "Professional - internal/legacy, не основной публичный тариф.\n\n"
-        "Для выдачи тарифа администратору нужен ваш Telegram ID.\n"
+        "💳 Тарифы VoxNoteBot\n\n"
+        "Выберите тариф. После оплаты администратор вручную выдаст доступ по вашему Telegram ID.\n\n"
         f"Ваш Telegram ID: {telegram_id_text}\n\n"
-        "После оплаты администратор подтверждает тариф и выдаёт пакет минут. "
-        "Автоматической оплаты пока нет.\n\n"
+        "Free — 0 ₽\n"
+        f"- {free_plan['minutes']} минут\n"
+        "- fast-транскрибация\n"
+        "- Очистить\n"
+        "- Саммари\n"
+        "- подходит, чтобы попробовать бота\n\n"
+        f"Personal — {personal_plan['price']} ₽\n"
+        f"- {personal_plan['minutes']} минут\n"
+        "- для личных голосовых заметок\n"
+        "- Очистить, Саммари, Задачи\n"
+        "- Рефлексия\n"
+        "- План действий\n"
+        "- подходит для личных заметок, учёбы, бытовых задач и идей\n\n"
+        f"Premium HR — {premium_plan['price']} ₽\n"
+        f"- {premium_plan['minutes']} минут\n"
+        "- premium-транскрибация\n"
+        "- сильная модель обработки текста для HR\n"
+        "- HR-саммари\n"
+        "- Факты / интерпретации\n"
+        "- Люди\n"
+        "- Компетенции\n"
+        "- Сильные стороны / зоны роста\n"
+        "- Рекомендации по развитию\n"
+        "- HR-отчёт\n"
+        "- подходит для оценщиков, HR-интервью и заметок по оценке персонала\n\n"
+        "Как оплатить:\n"
+        "1. Выберите тариф.\n"
+        "2. Сделайте перевод по инструкции ниже.\n"
+        "3. Отправьте администратору:\n"
+        "- выбранный тариф\n"
+        "- подтверждение оплаты\n"
+        "- ваш Telegram ID\n"
+        f"Ваш Telegram ID: {telegram_id_text}\n"
+        "4. После проверки администратор выдаст тариф и пакет минут.\n\n"
+        f"{_payment_details_text(settings)}\n\n"
         "Выберите тариф:",
         reply_markup=packages_keyboard(
             free_minutes=settings.default_free_minutes,
@@ -131,13 +173,12 @@ async def select_package(callback: CallbackQuery, session: AsyncSession) -> None
     await callback.answer()
     if callback.message:
         await callback.message.answer(
-            "Переведите оплату по СБП:\n"
-            f"Номер: {settings.sbp_phone}\n"
-            f"Банк: {settings.sbp_bank_name}\n"
-            f"Получатель: {settings.sbp_recipient_name}\n"
-            f"Комментарий: {settings.sbp_payment_comment}\n\n"
-            "После оплаты отправьте администратору: выбранный тариф, "
-            "подтверждение оплаты и ваш Telegram ID.\n"
+            f"Выбранный тариф: {package.name}\n\n"
+            f"{_payment_details_text(settings)}\n\n"
+            "После оплаты отправьте администратору:\n"
+            "- выбранный тариф\n"
+            "- подтверждение оплаты\n"
+            "- ваш Telegram ID\n"
             f"Ваш Telegram ID: {callback.from_user.id}\n\n"
             "Затем нажмите кнопку 'Я оплатил'.",
             reply_markup=payment_claim_keyboard(payment.id),

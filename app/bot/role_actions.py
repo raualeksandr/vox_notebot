@@ -206,9 +206,15 @@ def can_use_role_callback(
 
 def role_action_denial_message(profile_type: str) -> str:
     if profile_type == "hr_assessor":
-        return "HR-функции доступны на тарифе Premium HR."
+        return (
+            "HR-функции доступны на тарифе Premium HR. "
+            "Откройте /buy, чтобы посмотреть тариф и инструкцию оплаты."
+        )
     if profile_type == "personal_notes":
-        return "Эта функция доступна на тарифе Personal."
+        return (
+            "Эта функция доступна на тарифе Personal. "
+            "Откройте /buy, чтобы посмотреть тариф и инструкцию оплаты."
+        )
     return "Эта функция недоступна на вашем тарифе."
 
 

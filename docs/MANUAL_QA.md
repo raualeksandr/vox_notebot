@@ -70,8 +70,8 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - Set legacy profile PM/BA, Founder, or Student/Researcher with Professional/Premium plan and confirm matching legacy role buttons are shown.
 - Confirm users do not see buttons for other profiles.
 - If testing callbacks manually, confirm a mismatched profile receives `Эта функция недоступна для вашего профиля.`
-- If testing direct HR callbacks manually without Premium, confirm the user receives `HR-функции доступны на тарифе Premium HR.` and no OpenAI processing result is returned.
-- If testing Personal callbacks manually without Personal/Premium, confirm the user receives `Эта функция доступна на тарифе Personal.`
+- If testing direct HR callbacks manually without Premium, confirm the user receives `HR-функции доступны на тарифе Premium HR. Откройте /buy, чтобы посмотреть тариф и инструкцию оплаты.` and no OpenAI processing result is returned.
+- If testing Personal callbacks manually without Personal/Premium, confirm the user receives `Эта функция доступна на тарифе Personal. Откройте /buy, чтобы посмотреть тариф и инструкцию оплаты.`
 
 ## G. History
 
@@ -88,8 +88,14 @@ Expected result: each action returns a role-specific artifact and does not deduc
 ## H. Payments/admin
 
 - Send `/buy`.
+- Confirm `/buy` starts with `💳 Тарифы VoxNoteBot`.
+- Confirm `/buy` shows Free, Personal, and Premium HR as public tariffs.
+- Confirm Professional is not shown as a primary public tariff.
 - Confirm `/buy` shows the user's Telegram ID.
+- Confirm `/buy` shows the payment instruction steps.
+- Confirm `/buy` shows configured SBP/payment details, or `Реквизиты оплаты уточните у администратора.` when details are not configured.
 - Confirm `/buy` tells the user to send the selected tariff, payment confirmation, and Telegram ID to the administrator.
+- Confirm paywall/upgrade messages direct the user to `/buy`.
 - Start a manual payment.
 - Click `Я оплатил`.
 - As admin, approve the payment.
