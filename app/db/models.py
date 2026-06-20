@@ -21,6 +21,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(32), default="user")
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
     current_plan: Mapped[str] = mapped_column(String(32), default="free")
+    plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     transcription_quality: Mapped[str] = mapped_column(String(32), default="fast")
     onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(

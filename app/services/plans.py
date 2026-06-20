@@ -1,6 +1,12 @@
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config import get_settings
+from app.db.models import UserProfile
+from app.services.billing import get_or_create_balance, set_balance_minutes
 
 
 PlanConfig = dict[str, Any]
@@ -89,6 +95,7 @@ PLANS: dict[str, PlanConfig] = {
         "display_label": "Free",
         "minutes": 30,
         "duration_days": None,
+        "default_profile": "personal_notes",
         "quality": "fast",
         "transcription": "fast",
         "actions": "basic",
@@ -101,6 +108,7 @@ PLANS: dict[str, PlanConfig] = {
         "minutes": 300,
         "days": 60,
         "duration_days": 60,
+        "default_profile": "personal_notes",
         "quality": "fast",
         "transcription": "fast",
         "actions": "personal_notes",
@@ -116,6 +124,7 @@ PLANS: dict[str, PlanConfig] = {
         "minutes": 600,
         "days": 60,
         "duration_days": 60,
+        "default_profile": None,
         "quality": "premium",
         "transcription": "premium",
         "actions": "pm_ba",
@@ -140,10 +149,27 @@ PLANS: dict[str, PlanConfig] = {
         "minutes": 1000,
         "days": 60,
         "duration_days": 60,
+        "default_profile": "hr_assessor",
         "quality": "premium",
         "transcription": "premium",
         "actions": "hr",
         "price": 1290,
+        "currency": "RUB",
+        "features": "all",
+        "premium_rerun": True,
+    },
+    "premium_trial": {
+        "label": "Premium HR Trial",
+        "display_label": "Premium HR Trial",
+        "stored_plan_key": "premium",
+        "minutes": 1000,
+        "days": 7,
+        "duration_days": 7,
+        "default_profile": "hr_assessor",
+        "quality": "premium",
+        "transcription": "premium",
+        "actions": "hr",
+        "price": 0,
         "currency": "RUB",
         "features": "all",
         "premium_rerun": True,
@@ -238,11 +264,123 @@ def get_plan_minutes(plan_key: str) -> int:
 
 
 def get_default_profile_for_plan(plan_key: str) -> str | None:
-    if plan_key in {"free", "personal"}:
-        return "personal_notes"
-    if plan_key == "premium":
-        return "hr_assessor"
-    return None
+    return get_plan(plan_key).get("default_profile")
+
+
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _compare_now_for_expires_at(expires_at: datetime, now: datetime) -> datetime:
+    if expires_at.tzinfo is None and now.tzinfo is not None:
+        return now.replace(tzinfo=None)
+    if expires_at.tzinfo is not None and now.tzinfo is None:
+        return now.replace(tzinfo=timezone.utc)
+    return now
+
+
+def is_plan_expired(user: object, now: datetime | None = None) -> bool:
+    plan_key = getattr(user, "current_plan", "free") or "free"
+    if plan_key == "free":
+        return False
+
+    expires_at = getattr(user, "plan_expires_at", None)
+    if expires_at is None:
+        return False
+
+    now = _compare_now_for_expires_at(expires_at, now or _now_utc())
+    return now > expires_at
+
+
+def get_effective_plan(user: object, now: datetime | None = None) -> str:
+    if is_plan_expired(user, now=now):
+        return "free"
+    return getattr(user, "current_plan", "free") or "free"
+
+
+def get_plan_expiration_text(user: object) -> str:
+    expires_at = getattr(user, "plan_expires_at", None)
+    if expires_at is None:
+        plan_key = getattr(user, "current_plan", "free") or "free"
+        return "не ограничен" if plan_key == "free" else "не указано"
+    return expires_at.strftime("%Y-%m-%d %H:%M UTC")
+
+
+def calculate_plan_expiration(
+    plan_key: str,
+    now: datetime | None = None,
+    *,
+    trial: bool = False,
+) -> datetime | None:
+    if plan_key == "free":
+        return None
+
+    config_key = "premium_trial" if trial and plan_key == "premium" else plan_key
+    duration_days = get_plan(config_key).get("duration_days")
+    if duration_days is None:
+        return None
+
+    return (now or _now_utc()) + timedelta(days=int(duration_days))
+
+
+async def apply_plan_to_user(
+    session: AsyncSession,
+    user: object,
+    profile: UserProfile | None,
+    plan_key: str,
+    *,
+    trial: bool = False,
+) -> dict[str, Any]:
+    config_key = "premium_trial" if trial and plan_key == "premium" else plan_key
+    if config_key not in PLANS:
+        raise ValueError("Unknown plan.")
+
+    plan = get_plan(config_key)
+    effective_trial = trial or config_key == "premium_trial"
+    stored_plan_key = str(plan.get("stored_plan_key") or plan_key)
+    old_plan = getattr(user, "current_plan", None) or "free"
+    old_balance = await get_or_create_balance(session, getattr(user, "id"))
+    old_balance_minutes = Decimal(old_balance.minutes_remaining)
+    package_minutes = int(plan["minutes"])
+    new_balance = await set_balance_minutes(session, getattr(user, "id"), package_minutes)
+
+    old_profile_type = profile.profile_type if profile and profile.profile_type else "-"
+    default_profile_type = get_default_profile_for_plan(config_key)
+    new_profile_type = old_profile_type
+
+    if stored_plan_key in {"personal", "premium"} and default_profile_type:
+        if profile is None:
+            profile = UserProfile(user_id=getattr(user, "id"))
+            session.add(profile)
+            await session.flush()
+        profile.profile_type = default_profile_type
+        new_profile_type = profile.profile_type or "-"
+    elif stored_plan_key == "free" and profile is None and default_profile_type:
+        profile = UserProfile(user_id=getattr(user, "id"))
+        session.add(profile)
+        await session.flush()
+        profile.profile_type = default_profile_type
+        new_profile_type = profile.profile_type or "-"
+
+    setattr(user, "current_plan", stored_plan_key)
+    setattr(
+        user,
+        "plan_expires_at",
+        calculate_plan_expiration(stored_plan_key, trial=effective_trial),
+    )
+    await session.flush()
+
+    return {
+        "old_plan": old_plan,
+        "new_plan": stored_plan_key,
+        "old_balance": old_balance_minutes,
+        "new_balance": Decimal(new_balance.minutes_remaining),
+        "old_profile": old_profile_type,
+        "new_profile": new_profile_type,
+        "plan_expires_at": getattr(user, "plan_expires_at", None),
+        "minutes_granted": package_minutes,
+        "trial": effective_trial,
+    }
 
 
 def get_text_model_for_plan(plan_key: str, profile_type: str | None = None) -> str:
@@ -294,19 +432,26 @@ def get_available_features(profile_key: str, plan_key: str) -> list[str]:
 
 
 def has_feature(user: object, feature_key: str) -> bool:
-    plan_key = getattr(user, "current_plan", "free") or "free"
+    plan_key = get_effective_plan(user)
     profile = getattr(user, "__dict__", {}).get("profile")
     profile_key = getattr(profile, "profile_type", None) or ""
     return feature_key in get_available_features(profile_key, plan_key)
 
 
+def get_text_model_for_user(user: object) -> str:
+    plan_key = get_effective_plan(user)
+    profile = getattr(user, "__dict__", {}).get("profile")
+    profile_key = getattr(profile, "profile_type", None)
+    return get_text_model_for_plan(plan_key, profile_key)
+
+
 def get_transcription_model_for_user(user: object) -> str:
-    plan_key = getattr(user, "current_plan", "free") or "free"
+    plan_key = get_effective_plan(user)
     profile = getattr(user, "__dict__", {}).get("profile")
     profile_key = getattr(profile, "profile_type", None)
     return get_transcription_model_for_plan(plan_key, profile_key)
 
 
 def can_use_premium_rerun(user: object) -> bool:
-    plan_key = getattr(user, "current_plan", "free") or "free"
+    plan_key = get_effective_plan(user)
     return bool(get_plan(plan_key)["premium_rerun"])

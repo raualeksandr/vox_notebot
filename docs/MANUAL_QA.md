@@ -103,9 +103,13 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - As admin, open `/admin`, click `💳 Сменить тариф`, enter a user's Telegram ID, and switch plans.
 - Confirm plan assignment reports old/new plan and old/new balance.
 - Confirm Free sets balance to 30 minutes and creates `personal_notes` only when no profile exists.
-- Confirm Personal sets balance to 300 minutes and `profile_type="personal_notes"`.
-- Confirm Premium HR sets balance to 1000 minutes and `profile_type="hr_assessor"`.
-- Confirm Professional sets balance to 600 minutes and does not overwrite an existing legacy profile.
+- Confirm Personal sets balance to 300 minutes, `profile_type="personal_notes"`, and `plan_expires_at` about 60 days ahead.
+- Confirm Premium HR sets balance to 1000 minutes, `profile_type="hr_assessor"`, and `plan_expires_at` about 60 days ahead.
+- Confirm Professional sets balance to 600 minutes, sets `plan_expires_at` about 60 days ahead, and does not overwrite an existing legacy profile.
+- Confirm Free has no expiration.
+- Confirm existing paid users with `plan_expires_at = NULL` are treated as active for backward compatibility.
+- Confirm Premium HR Trial helper support grants 1000 minutes, stores `current_plan="premium"`, sets `profile_type="hr_assessor"`, and sets a 7-day expiration when exercised from a test script or future admin flow.
+- Confirm full automatic expiry enforcement in UI/gating is not expected in this step.
 - As admin, add minutes manually and confirm this still works as a secondary operation.
 - As admin, remove minutes manually and confirm this still works as a secondary operation.
 - Confirm Free/Personal + HR profile does not see HR buttons.

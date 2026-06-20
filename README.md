@@ -56,6 +56,15 @@ Public tariffs shown in `/start` and `/buy`:
 
 Professional is an internal / legacy plan and is not presented as a primary public tariff.
 
+Paid plans now have `User.plan_expires_at`:
+
+- Personal: 60 days.
+- Premium HR: 60 days.
+- Professional: 60 days.
+- Premium HR Trial: 7 days, stored as `current_plan="premium"` with `profile_type="hr_assessor"`.
+
+Existing paid users with `plan_expires_at = NULL` remain active for backward compatibility. Automatic enforcement across the full UI/admin surface will be connected in the next step; this step adds the database field and service helpers.
+
 `/setup` is deprecated. It remains as a safe legacy handler, but it no longer starts the questionnaire; access is determined by tariff.
 
 ### Profile-specific actions
@@ -95,9 +104,10 @@ Admins are configured with `ADMIN_TELEGRAM_IDS`. Admin tools include payment rev
 The primary access-management action is assigning a plan. When an admin changes a user's plan, the bot sets `User.current_plan`, sets the remaining balance to the plan package minutes, and applies the default profile where appropriate:
 
 - Free: sets 30 remaining minutes; creates `personal_notes` only if the user has no profile.
-- Personal: sets 300 remaining minutes and `profile_type="personal_notes"`.
-- Premium HR: sets 1000 remaining minutes and `profile_type="hr_assessor"`.
-- Professional: sets 600 remaining minutes and leaves the existing legacy profile unchanged.
+- Personal: sets 300 remaining minutes, `profile_type="personal_notes"`, and a 60-day expiration.
+- Premium HR: sets 1000 remaining minutes, `profile_type="hr_assessor"`, and a 60-day expiration.
+- Premium HR Trial: service helper support for 1000 minutes, `profile_type="hr_assessor"`, and a 7-day expiration.
+- Professional: sets 600 remaining minutes, a 60-day expiration, and leaves the existing legacy profile unchanged.
 
 Manual add/remove minutes remains available as an admin-only secondary operation.
 
