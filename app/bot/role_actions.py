@@ -6,6 +6,7 @@ from app.services.text_processing import (
     create_acceptance_criteria,
     create_action_plan,
     create_assessment_report,
+    create_development_recommendations,
     create_flashcards,
     create_hr_summary,
     create_idea_brief,
@@ -20,7 +21,9 @@ from app.services.text_processing import (
     explain_simply,
     extract_business_hypotheses,
     extract_competency_notes,
+    extract_people,
     extract_risks_assumptions,
+    extract_strengths_growth_zones,
     separate_evidence_and_interpretation,
 )
 
@@ -62,7 +65,6 @@ ROLE_ACTIONS: dict[str, RoleActionRows] = {
     "hr_assessor": (
         (
             RoleAction("hr_summary", "📋 HR-саммари", create_hr_summary),
-            RoleAction("competency_notes", "🧠 Компетенции", extract_competency_notes),
         ),
         (
             RoleAction(
@@ -70,6 +72,26 @@ ROLE_ACTIONS: dict[str, RoleActionRows] = {
                 "⚖️ Факты / интерпретации",
                 separate_evidence_and_interpretation,
             ),
+        ),
+        (
+            RoleAction("people", "👥 Люди", extract_people),
+            RoleAction("competency_notes", "🧠 Компетенции", extract_competency_notes),
+        ),
+        (
+            RoleAction(
+                "strengths_growth",
+                "💪 Сильные стороны / зоны роста",
+                extract_strengths_growth_zones,
+            ),
+        ),
+        (
+            RoleAction(
+                "development_recommendations",
+                "📈 Рекомендации",
+                create_development_recommendations,
+            ),
+        ),
+        (
             RoleAction("hr_report", "🧾 HR-отчёт", create_assessment_report),
         ),
     ),

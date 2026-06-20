@@ -256,6 +256,9 @@ async def process_universal_transcription_action(
     F.data.startswith("hr_summary:")
     | F.data.startswith("competency_notes:")
     | F.data.startswith("evidence:")
+    | F.data.startswith("people:")
+    | F.data.startswith("strengths_growth:")
+    | F.data.startswith("development_recommendations:")
     | F.data.startswith("hr_report:")
 )
 async def process_hr_transcription_action(

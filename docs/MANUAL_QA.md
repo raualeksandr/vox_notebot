@@ -53,7 +53,7 @@ Expected result: each action returns a structured artifact and does not deduct e
 
 For each eligible paid profile, run at least one role-specific action:
 
-- Premium HR: click one of `📋 HR-саммари`, `🧠 Компетенции`, `⚖️ Факты / интерпретации`, `🧾 HR-отчёт`.
+- Premium HR: confirm all 7 HR buttons are visible: `📋 HR-саммари`, `⚖️ Факты / интерпретации`, `👥 Люди`, `🧠 Компетенции`, `💪 Сильные стороны / зоны роста`, `📈 Рекомендации`, `🧾 HR-отчёт`.
 - Professional/Premium PM/BA: click one of `📌 Протокол`, `🧩 User Story`, `☑️ Критерии`, `⚠️ Риски`.
 - Professional/Premium Founder: click one of `🚀 Идея`, `🧪 Гипотезы`, `🧱 MVP`, `🎤 Pitch`.
 - Professional/Premium Student/Researcher: click one of `🎓 Конспект`, `🔍 Исследование`, `🧠 Объяснить проще`, `🗂️ Карточки`.
@@ -63,15 +63,15 @@ Expected result: each action returns a role-specific artifact and does not deduc
 
 ## F. Gating
 
-- Set profile to HR / Assessor with Free plan and confirm HR buttons are not shown.
-- Set profile to HR / Assessor with Premium plan and confirm HR buttons are shown.
+- Set profile to HR / Assessor with Free or Personal plan and confirm HR buttons are not shown.
+- Set profile to HR / Assessor with Premium plan and confirm all 7 HR buttons are shown.
 - Set profile to Personal Notes with Free plan and confirm only basic actions are shown.
 - Set profile to Personal Notes with Personal plan and confirm personal buttons are shown.
 - Set legacy profile PM/BA, Founder, or Student/Researcher with Free plan and confirm only basic actions are shown.
 - Set legacy profile PM/BA, Founder, or Student/Researcher with Professional/Premium plan and confirm matching legacy role buttons are shown.
 - Confirm users do not see buttons for other profiles.
 - If testing callbacks manually, confirm a mismatched profile receives `Эта функция недоступна для вашего профиля.`
-- If testing HR callbacks manually without Premium, confirm the user receives `HR-функции доступны на тарифе Premium HR.`
+- If testing direct HR callbacks manually without Premium, confirm the user receives `HR-функции доступны на тарифе Premium HR.` and no OpenAI processing result is returned.
 - If testing Personal callbacks manually without Personal/Premium, confirm the user receives `Эта функция доступна на тарифе Personal.`
 
 ## G. History
@@ -81,7 +81,7 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - Click `📄 Текст` and confirm full text opens.
 - Run one universal action from history.
 - Confirm Free users see only basic actions in history.
-- Confirm HR buttons in history are visible only for Premium + `hr_assessor`.
+- Confirm all 7 HR buttons in history are visible only for Premium + `hr_assessor`.
 - Confirm Personal buttons in history are visible only for Personal/Premium + `personal_notes`.
 - Confirm legacy buttons in history are visible only for Professional/Premium legacy profiles.
 
@@ -95,8 +95,8 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - As admin, add minutes manually.
 - As admin, remove minutes manually.
 - As admin, open `/admin`, click `💳 Сменить тариф`, enter a user's Telegram ID, and switch plans.
-- Confirm Free + HR profile does not see HR buttons.
-- Confirm Premium + HR profile sees HR buttons.
+- Confirm Free/Personal + HR profile does not see HR buttons.
+- Confirm Premium + HR profile sees all 7 HR buttons.
 - Confirm Free + Personal Notes profile sees only basic actions.
 - Confirm Personal + Personal Notes profile sees personal buttons.
 - As admin, check stats.
