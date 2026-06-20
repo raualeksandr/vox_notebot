@@ -63,7 +63,13 @@ Paid plans now have `User.plan_expires_at`:
 - Professional: 60 days.
 - Premium HR Trial: 7 days, stored as `current_plan="premium"` with `profile_type="hr_assessor"`.
 
-Existing paid users with `plan_expires_at = NULL` remain active for backward compatibility. Automatic enforcement across the full UI/admin surface will be connected in the next step; this step adds the database field and service helpers.
+Existing paid users with `plan_expires_at = NULL` remain active for backward compatibility.
+
+### Subscription expiration
+
+Access checks use an effective plan instead of raw `User.current_plan`. When a paid plan has expired, `get_effective_plan(user)` returns `free`, so visible buttons, `/history` actions, role callbacks, and model selection fall back to Free access. The stored `current_plan` is not overwritten automatically; `/balance` and admin summaries show both the current plan and the effective plan when they differ.
+
+Premium HR Trial is a 7-day Premium HR access grant. It stores `current_plan="premium"`, sets `profile_type="hr_assessor"`, grants 1000 minutes, and sets `plan_expires_at` 7 days ahead.
 
 `/setup` is deprecated. It remains as a safe legacy handler, but it no longer starts the questionnaire; access is determined by tariff.
 
@@ -100,7 +106,7 @@ Package settings are configured through environment variables. The current MVP d
 
 ### Admin flow
 
-Admins are configured with `ADMIN_TELEGRAM_IDS`. Admin tools include payment review, approve/reject flows, manual minute adjustments, and basic stats.
+Admins are configured with `ADMIN_TELEGRAM_IDS`. Admin tools include payment review, approve/reject flows, manual minute adjustments, Premium HR Trial grants, and basic stats.
 The primary access-management action is assigning a plan. When an admin changes a user's plan, the bot sets `User.current_plan`, sets the remaining balance to the plan package minutes, and applies the default profile where appropriate:
 
 - Free: sets 30 remaining minutes; creates `personal_notes` only if the user has no profile.

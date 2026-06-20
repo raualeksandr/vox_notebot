@@ -87,6 +87,7 @@ Expected result: each action returns a role-specific artifact and does not deduc
 
 ## H. Payments/admin
 
+- Before testing subscriptions on a fresh environment, apply migrations with `alembic upgrade head`.
 - Send `/buy`.
 - Confirm `/buy` starts with `💳 Тарифы VoxNoteBot`.
 - Confirm `/buy` shows Free, Personal, and Premium HR as public tariffs.
@@ -108,8 +109,13 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - Confirm Professional sets balance to 600 minutes, sets `plan_expires_at` about 60 days ahead, and does not overwrite an existing legacy profile.
 - Confirm Free has no expiration.
 - Confirm existing paid users with `plan_expires_at = NULL` are treated as active for backward compatibility.
-- Confirm Premium HR Trial helper support grants 1000 minutes, stores `current_plan="premium"`, sets `profile_type="hr_assessor"`, and sets a 7-day expiration when exercised from a test script or future admin flow.
-- Confirm full automatic expiry enforcement in UI/gating is not expected in this step.
+- As admin, open `/admin`, click `🎁 Выдать Premium HR Trial`, enter a user's Telegram ID, and confirm it grants 1000 minutes, stores `current_plan="premium"`, sets `profile_type="hr_assessor"`, and sets `plan_expires_at` about 7 days ahead.
+- Confirm `/balance` for that user shows `current_plan: premium`, `plan_expires_at`, and no expired warning.
+- Confirm Premium HR Trial users see all 7 HR buttons while the trial is active.
+- Manually set a paid user's `plan_expires_at` to a past datetime in the test database, then confirm `/balance` shows `effective_plan: free` and `Тариф истёк. Сейчас доступен Free-режим.`
+- Confirm the expired user sees only Free/basic buttons after transcription and in `/history`.
+- Confirm direct HR callbacks for an expired Premium HR user return the Premium HR upgrade message and do not call OpenAI.
+- Confirm an old paid user with `plan_expires_at = NULL` remains active for backward compatibility.
 - As admin, add minutes manually and confirm this still works as a secondary operation.
 - As admin, remove minutes manually and confirm this still works as a secondary operation.
 - Confirm Free/Personal + HR profile does not see HR buttons.

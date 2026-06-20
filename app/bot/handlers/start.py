@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.user import user_menu_keyboard
 from app.config import get_settings
 from app.services.billing import get_or_create_balance
+from app.services.plans import is_plan_expired
 from app.services.users import get_or_create_user
 
 
@@ -64,6 +65,10 @@ async def start_command(message: Message, session: AsyncSession) -> None:
 
     await message.answer(WELCOME_TEXT)
     await message.answer(f"Ваш Telegram ID: {telegram_user.id}")
+    if is_plan_expired(user):
+        await message.answer(
+            "Ваш тариф истёк, доступен Free-режим. Откройте /buy для продления."
+        )
     await message.answer(
         "Используйте кнопки меню ниже.",
         reply_markup=user_menu_keyboard(is_admin=settings.is_admin(telegram_user.id)),

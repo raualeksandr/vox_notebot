@@ -15,6 +15,7 @@ def admin_menu_keyboard() -> InlineKeyboardMarkup:
         ("Find user", "admin:find_user"),
         ("User balance", "admin:user_balance"),
         ("💳 Сменить тариф", "admin:change_plan"),
+        ("🎁 Выдать Premium HR Trial", "admin:grant_premium_trial"),
         ("➕ Добавить минуты вручную", "admin:add_minutes"),
         ("➖ Списать минуты вручную", "admin:remove_minutes"),
         ("Stats", "admin:stats"),

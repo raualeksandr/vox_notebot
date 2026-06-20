@@ -31,6 +31,7 @@ from app.services.billing import (
 )
 from app.services.openai_client import OpenAIKeyNotConfiguredError
 from app.services.plans import (
+    get_effective_plan,
     get_text_model_for_plan,
     get_transcription_model_for_plan,
 )
@@ -77,7 +78,7 @@ async def _send_fresh_action_panel(
     profile_type: str | None,
     transcription_id: int,
 ) -> None:
-    plan_key = getattr(user, "current_plan", "free") or "free"
+    plan_key = get_effective_plan(user)
     role_keyboard_flags = role_action_keyboard_flags(profile_type, plan_key)
     visible_universal_callback_keys = get_visible_universal_callback_keys(
         profile_type,
@@ -138,7 +139,7 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
         user_profile = await get_user_profile(session, user.id)
         profile_type = user_profile.profile_type if user_profile is not None else None
         transcription_model = get_transcription_model_for_plan(
-            user.current_plan or "free",
+            get_effective_plan(user),
             profile_type,
         )
 
@@ -217,11 +218,11 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
         await answer_text_chunks(message, transcript_text)
         role_keyboard_flags = role_action_keyboard_flags(
             profile_type,
-            user.current_plan,
+            get_effective_plan(user),
         )
         visible_universal_callback_keys = get_visible_universal_callback_keys(
             profile_type,
-            user.current_plan,
+            get_effective_plan(user),
         )
         await message.answer(
             "Что сделать с транскрипцией?",
@@ -416,7 +417,7 @@ async def _process_transcription_action(
     title, processor = processor_config
     user_profile = await get_user_profile(session, user.id)
     profile_type = user_profile.profile_type if user_profile is not None else None
-    plan_key = user.current_plan or "free"
+    plan_key = get_effective_plan(user)
     if not can_use_universal_callback(
         _universal_callback_key(action),
         profile_type,
@@ -480,7 +481,7 @@ async def _process_role_transcription_action(
         )
         return
 
-    plan_key = user.current_plan or "free"
+    plan_key = get_effective_plan(user)
     if not can_use_role_callback(action, user_profile.profile_type, plan_key):
         await callback.bot.send_message(
             callback.from_user.id,

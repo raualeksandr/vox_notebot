@@ -10,6 +10,11 @@ from app.services.billing import (
     get_or_create_balance,
     get_recent_balance_transactions,
 )
+from app.services.plans import (
+    get_effective_plan,
+    get_plan_expiration_text,
+    is_plan_expired,
+)
 from app.services.users import get_or_create_user
 
 
@@ -37,13 +42,27 @@ async def balance_command(message: Message, session: AsyncSession) -> None:
     )
     balance = await get_or_create_balance(session, user.id)
     transactions = await get_recent_balance_transactions(session, user.id)
+    raw_plan = user.current_plan or "free"
+    effective_plan = get_effective_plan(user)
 
     lines = [
         f"Ваш Telegram ID: {telegram_user.id}",
-        f"Текущий баланс: {format_minutes(balance.minutes_remaining)} минут.",
-        f"Всего начислено: {format_minutes(balance.minutes_total)} минут.",
-        f"Использовано: {format_minutes(balance.minutes_used)} минут.",
+        f"current_plan: {raw_plan}",
+        f"plan_expires_at: {get_plan_expiration_text(user)}",
     ]
+    if effective_plan != raw_plan:
+        lines.append(f"effective_plan: {effective_plan}")
+    if is_plan_expired(user):
+        lines.append("Тариф истёк. Сейчас доступен Free-режим.")
+
+    lines.extend(
+        [
+            f"Текущий баланс: {format_minutes(balance.minutes_remaining)} минут.",
+            f"Всего начислено: {format_minutes(balance.minutes_total)} минут.",
+            f"Использовано: {format_minutes(balance.minutes_used)} минут.",
+        ]
+    )
+
     if transactions:
         lines.append("\nПоследние операции:")
         for transaction in transactions:

@@ -12,6 +12,7 @@ from app.bot.role_actions import (
     role_action_keyboard_flags,
 )
 from app.config import get_settings
+from app.services.plans import get_effective_plan
 from app.services.transcription import (
     get_recent_transcriptions,
     get_user_transcription,
@@ -51,13 +52,14 @@ async def history_command(message: Message, session: AsyncSession) -> None:
 
     user_profile = await get_user_profile(session, user.id)
     profile_type = user_profile.profile_type if user_profile is not None else None
+    plan_key = get_effective_plan(user)
     role_keyboard_flags = role_action_keyboard_flags(
         profile_type,
-        user.current_plan,
+        plan_key,
     )
     visible_universal_callback_keys = get_visible_universal_callback_keys(
         profile_type,
-        user.current_plan,
+        plan_key,
     )
     await message.answer("Ваши последние транскрипции:")
     for transcription in transcriptions:

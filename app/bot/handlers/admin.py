@@ -26,7 +26,12 @@ from app.services.billing import (
     reject_payment,
     remove_minutes,
 )
-from app.services.plans import apply_plan_to_user, get_plan_expiration_text
+from app.services.plans import (
+    apply_plan_to_user,
+    get_effective_plan,
+    get_plan_expiration_text,
+    is_plan_expired,
+)
 from app.services.users import (
     get_or_create_user,
     get_user_by_id,
@@ -44,6 +49,7 @@ class AdminStates(StatesGroup):
     adjustment_target = State()
     adjustment_minutes = State()
     plan_target = State()
+    trial_target = State()
 
 
 def _is_admin(telegram_id: int) -> bool:
@@ -74,13 +80,40 @@ async def _format_user_plan_summary(session: AsyncSession, user: User) -> str:
     username = f"@{user.username}" if user.username else "-"
     profile_type = profile.profile_type if profile and profile.profile_type else "-"
     remaining = balance.minutes_remaining if balance else Decimal("0")
+    raw_plan = user.current_plan or "free"
+    effective_plan = get_effective_plan(user)
+    expired_text = "\nplan_status: expired, effective access is Free" if is_plan_expired(user) else ""
     return (
         f"Telegram ID: {user.telegram_id}\n"
         f"Username: {username}\n"
-        f"current_plan: {user.current_plan}\n"
+        f"current_plan: {raw_plan}\n"
+        f"effective_plan: {effective_plan}\n"
         f"plan_expires_at: {get_plan_expiration_text(user)}\n"
         f"profile_type: {profile_type}\n"
         f"balance minutes: {remaining}"
+        f"{expired_text}"
+    )
+
+
+def _format_plan_assignment_summary(
+    summary: dict,
+    *,
+    label: str,
+    expires_text: str,
+    expires_label: str = "plan_expires_at",
+) -> str:
+    trial_text = "yes" if summary.get("trial") else "no"
+    return (
+        f"Тариф пользователя обновлён: {label}\n\n"
+        f"old_plan: {summary['old_plan']}\n"
+        f"new_plan: {summary['new_plan']}\n"
+        f"old_balance: {summary['old_balance']} минут\n"
+        f"new_balance: {summary['new_balance']} минут\n"
+        f"Баланс установлен на пакет тарифа: {summary['minutes_granted']} минут\n"
+        f"{expires_label}: {expires_text}\n"
+        f"profile_type before: {summary['old_profile']}\n"
+        f"profile_type after: {summary['new_profile']}\n"
+        f"Trial: {trial_text}"
     )
 
 
@@ -292,6 +325,71 @@ async def receive_plan_target(
     )
 
 
+@router.callback_query(F.data == "admin:grant_premium_trial")
+async def request_premium_trial_target(
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.trial_target)
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer("Введите Telegram ID пользователя для Premium HR Trial.")
+
+
+@router.message(AdminStates.trial_target)
+async def receive_premium_trial_target(
+    message: Message,
+    state: FSMContext,
+    session: AsyncSession,
+) -> None:
+    if message.from_user is None or not _is_admin(message.from_user.id):
+        await state.clear()
+        await message.answer("Нет доступа")
+        return
+
+    user = await _resolve_user(session, message.text or "")
+    if user is None:
+        await message.answer("Пользователь не найден.")
+        return
+
+    old_profile = await get_user_profile(session, user.id)
+    summary = await apply_plan_to_user(
+        session,
+        user,
+        old_profile,
+        "premium",
+        trial=True,
+    )
+    minutes_delta = summary["new_balance"] - summary["old_balance"]
+    await create_balance_transaction(
+        session,
+        user_id=user.id,
+        transaction_type="plan_assignment",
+        minutes_delta=minutes_delta,
+        reason="Premium HR Trial assignment",
+        admin_id=message.from_user.id,
+    )
+    await session.flush()
+    await state.clear()
+
+    await message.answer(
+        "Premium HR Trial выдан.\n\n"
+        f"Telegram ID: {user.telegram_id}\n"
+        + _format_plan_assignment_summary(
+            summary,
+            label="Premium HR Trial",
+            expires_text=get_plan_expiration_text(user),
+            expires_label="Доступ до",
+        )
+        + "\n\n"
+        + await _format_user_plan_summary(session, user)
+    )
+
+
 @router.callback_query(F.data.startswith("admin:plan:set:"))
 async def set_user_plan(
     callback: CallbackQuery,
@@ -331,15 +429,12 @@ async def set_user_plan(
     await callback.answer("Тариф обновлён.")
     if callback.message:
         await callback.message.answer(
-            f"Тариф пользователя обновлён: {ADMIN_PLAN_LABELS[plan_key]}\n\n"
-            f"old_plan: {summary['old_plan']}\n"
-            f"new_plan: {summary['new_plan']}\n"
-            f"old_balance: {summary['old_balance']} минут\n"
-            f"new_balance: {summary['new_balance']} минут\n"
-            f"Баланс установлен на пакет тарифа: {summary['minutes_granted']} минут\n"
-            f"plan_expires_at: {get_plan_expiration_text(user)}\n"
-            f"profile_type before: {summary['old_profile']}\n"
-            f"profile_type after: {summary['new_profile']}\n\n"
+            _format_plan_assignment_summary(
+                summary,
+                label=ADMIN_PLAN_LABELS[plan_key],
+                expires_text=get_plan_expiration_text(user),
+            )
+            + "\n\n"
             f"{await _format_user_plan_summary(session, user)}"
         )
 
