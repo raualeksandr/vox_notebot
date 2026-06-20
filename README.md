@@ -34,6 +34,7 @@ Visible actions after transcription and in `/history` depend on the current plan
 - Professional: internal / legacy plan for legacy profile actions.
 
 These actions do not deduct additional minutes in the current MVP.
+After every text-processing result, the bot sends a fresh action panel for the same transcription so users do not need to scroll back to the original buttons.
 
 For the `personal_notes` profile, the post-transcription UI is intentionally smaller:
 
@@ -80,7 +81,7 @@ Profile-specific actions do not deduct additional minutes in the current MVP. HR
 
 ### Balance / manual payments
 
-`/balance` shows remaining minutes and recent transactions. `/buy` starts the manual payment flow. Users can claim payment with the `Я оплатил` button, and admins can approve or reject the claim.
+`/balance` shows the user's Telegram ID, remaining minutes, and recent transactions. `/buy` shows the user's Telegram ID and starts the manual payment flow. Users should send the selected tariff, payment confirmation, and their Telegram ID to the administrator, then claim payment with the `Я оплатил` button. Admins can approve or reject the claim.
 
 Package settings are configured through environment variables. The current MVP does not use Telegram Stars.
 
@@ -285,7 +286,9 @@ Short release smoke test:
 - `/history`
 - send one short voice note
 - run one universal action
+- confirm a fresh action panel appears below the processing result
 - confirm `/start` shows product description and tariffs
+- confirm `/start`, `/buy`, and `/balance` show the user's Telegram ID
 - confirm `/setup` says setup is no longer required
 - confirm tariff-based action gating after transcription
 - create and review one manual payment claim

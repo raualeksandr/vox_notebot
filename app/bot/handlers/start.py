@@ -39,7 +39,9 @@ HELP_TEXT = (
     "/admin - меню администратора, только для админов\n\n"
     "Доступ к функциям зависит от тарифа. Free даёт базовые действия, "
     "Personal открывает личные заметки, Premium HR открывает HR-функции "
-    "для оценщиков."
+    "для оценщиков.\n\n"
+    "Ваш Telegram ID отображается в /start, /buy и /balance. Он нужен для "
+    "ручной выдачи тарифа после оплаты."
 )
 
 
@@ -61,6 +63,7 @@ async def start_command(message: Message, session: AsyncSession) -> None:
     await get_or_create_balance(session, user.id)
 
     await message.answer(WELCOME_TEXT)
+    await message.answer(f"Ваш Telegram ID: {telegram_user.id}")
     await message.answer(
         "Используйте кнопки меню ниже.",
         reply_markup=user_menu_keyboard(is_admin=settings.is_admin(telegram_user.id)),

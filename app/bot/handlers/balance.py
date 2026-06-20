@@ -39,6 +39,7 @@ async def balance_command(message: Message, session: AsyncSession) -> None:
     transactions = await get_recent_balance_transactions(session, user.id)
 
     lines = [
+        f"Ваш Telegram ID: {telegram_user.id}",
         f"Текущий баланс: {format_minutes(balance.minutes_remaining)} минут.",
         f"Всего начислено: {format_minutes(balance.minutes_total)} минут.",
         f"Использовано: {format_minutes(balance.minutes_used)} минут.",

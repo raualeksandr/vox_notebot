@@ -33,6 +33,8 @@ class Package:
 @router.message(Command("buy"))
 async def buy_command(message: Message) -> None:
     settings = get_settings()
+    telegram_user = message.from_user
+    telegram_id_text = str(telegram_user.id) if telegram_user else "-"
     free_plan = get_plan("free")
     personal_plan = get_plan("personal")
     premium_plan = get_plan("premium")
@@ -46,6 +48,8 @@ async def buy_command(message: Message) -> None:
         f"{premium_plan['minutes']} минут, premium-транскрибация и "
         "HR-функции для оценщиков.\n\n"
         "Professional - internal/legacy, не основной публичный тариф.\n\n"
+        "Для выдачи тарифа администратору нужен ваш Telegram ID.\n"
+        f"Ваш Telegram ID: {telegram_id_text}\n\n"
         "После оплаты администратор подтверждает тариф и выдаёт пакет минут. "
         "Автоматической оплаты пока нет.\n\n"
         "Выберите тариф:",
@@ -132,7 +136,10 @@ async def select_package(callback: CallbackQuery, session: AsyncSession) -> None
             f"Банк: {settings.sbp_bank_name}\n"
             f"Получатель: {settings.sbp_recipient_name}\n"
             f"Комментарий: {settings.sbp_payment_comment}\n\n"
-            "После оплаты нажмите кнопку 'Я оплатил'.",
+            "После оплаты отправьте администратору: выбранный тариф, "
+            "подтверждение оплаты и ваш Telegram ID.\n"
+            f"Ваш Telegram ID: {callback.from_user.id}\n\n"
+            "Затем нажмите кнопку 'Я оплатил'.",
             reply_markup=payment_claim_keyboard(payment.id),
         )
 

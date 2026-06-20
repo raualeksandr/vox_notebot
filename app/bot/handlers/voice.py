@@ -71,6 +71,29 @@ def _format_minutes(value: Decimal) -> str:
     return f"{value.normalize():f}"
 
 
+async def _send_fresh_action_panel(
+    callback: CallbackQuery,
+    user: object,
+    profile_type: str | None,
+    transcription_id: int,
+) -> None:
+    plan_key = getattr(user, "current_plan", "free") or "free"
+    role_keyboard_flags = role_action_keyboard_flags(profile_type, plan_key)
+    visible_universal_callback_keys = get_visible_universal_callback_keys(
+        profile_type,
+        plan_key,
+    )
+    await callback.bot.send_message(
+        callback.from_user.id,
+        "Что сделать с этой транскрипцией дальше?",
+        reply_markup=transcription_actions_keyboard(
+            transcription_id,
+            visible_universal_callback_keys=visible_universal_callback_keys,
+            **role_keyboard_flags,
+        ),
+    )
+
+
 @router.message(F.voice)
 async def voice_message(message: Message, session: AsyncSession) -> None:
     telegram_user = message.from_user
@@ -420,6 +443,7 @@ async def _process_transcription_action(
     if title:
         await callback.bot.send_message(callback.from_user.id, title)
     await send_text_chunks(callback.bot, callback.from_user.id, result)
+    await _send_fresh_action_panel(callback, user, profile_type, transcription_id)
 
 
 async def _process_role_transcription_action(
@@ -483,3 +507,9 @@ async def _process_role_transcription_action(
         return
 
     await send_text_chunks(callback.bot, callback.from_user.id, result)
+    await _send_fresh_action_panel(
+        callback,
+        user,
+        user_profile.profile_type,
+        transcription_id,
+    )

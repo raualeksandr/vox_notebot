@@ -15,6 +15,7 @@ Expected result: commands respond without errors. `/start` shows the product des
 ## B. Start / Setup / Menu
 
 - Run `/start` and confirm it explains VoxNoteBot, Personal Notes, Premium HR, and tariffs.
+- Confirm `/start` shows the user's Telegram ID.
 - Run `/setup` and confirm it says setup is no longer required.
 - Confirm `/setup` does not show questionnaire buttons.
 - Confirm the reply menu does not contain `⚙️ Настройка`.
@@ -45,6 +46,7 @@ For a Personal user with `profile_type="personal_notes"`, confirm these actions 
 - `📅 План`
 
 Expected result: each action returns a structured artifact and does not deduct extra minutes.
+After each result, a new `Что сделать с этой транскрипцией дальше?` action panel appears below the result.
 
 ## E. Role-specific actions
 
@@ -77,6 +79,7 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - Confirm latest successful transcriptions are listed.
 - Click `📄 Текст` and confirm full text opens.
 - Run one universal action from history.
+- Confirm a fresh action panel appears below the result from history.
 - Confirm Free users see only basic actions in history.
 - Confirm all 7 HR buttons in history are visible only for Premium + `hr_assessor`.
 - Confirm Personal buttons in history are visible only for Personal/Premium + `personal_notes`.
@@ -85,6 +88,8 @@ Expected result: each action returns a role-specific artifact and does not deduc
 ## H. Payments/admin
 
 - Send `/buy`.
+- Confirm `/buy` shows the user's Telegram ID.
+- Confirm `/buy` tells the user to send the selected tariff, payment confirmation, and Telegram ID to the administrator.
 - Start a manual payment.
 - Click `Я оплатил`.
 - As admin, approve the payment.
@@ -105,7 +110,14 @@ Expected result: each action returns a role-specific artifact and does not deduc
 
 Expected result: balances and payment statuses update correctly.
 
-## I. Railway
+## I. Telegram ID
+
+- Confirm `/start` shows `Ваш Telegram ID: ...`.
+- Confirm `/buy` shows `Ваш Telegram ID: ...`.
+- Confirm `/balance` shows `Ваш Telegram ID: ...`.
+- Confirm no external Telegram ID bot is needed for the payment/admin flow.
+
+## J. Railway
 
 - Deploy the latest branch.
 - Confirm deploy logs are clean.
