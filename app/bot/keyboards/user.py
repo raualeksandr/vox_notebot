@@ -27,7 +27,7 @@ UNIVERSAL_ACTION_ROWS = (
 
 def user_menu_keyboard(*, is_admin: bool = False) -> ReplyKeyboardMarkup:
     keyboard = [
-        [KeyboardButton(text="🎙 Отправить голосовое")],
+        [KeyboardButton(text="🎙 Отправить аудио")],
         [
             KeyboardButton(text="📚 История"),
             KeyboardButton(text="💰 Баланс"),

@@ -89,9 +89,11 @@ async def _send_setup_deprecated(
     *,
     is_admin: bool = False,
 ) -> None:
+    support_contact = get_settings().support_contact_username
     await message.answer(
         "Настройка больше не требуется: доступ к функциям определяется тарифом. "
-        "Чтобы изменить тариф, оформите подписку или обратитесь к администратору.",
+        "Посмотреть тарифы можно в /buy. "
+        f"По вопросам доступа, оплаты и тестового периода: {support_contact}.",
         reply_markup=user_menu_keyboard(is_admin=is_admin),
     )
 

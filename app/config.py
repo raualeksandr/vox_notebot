@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     sbp_bank_name: str = Field(default="", alias="SBP_BANK_NAME")
     sbp_recipient_name: str = Field(default="", alias="SBP_RECIPIENT_NAME")
     sbp_payment_comment: str = Field(default="", alias="SBP_PAYMENT_COMMENT")
+    support_contact_username: str = Field(
+        default="@raugestalt",
+        alias="SUPPORT_CONTACT_USERNAME",
+    )
+    max_audio_file_size_mb: int = Field(default=25, alias="MAX_AUDIO_FILE_SIZE_MB")
 
     default_free_minutes: int = Field(default=30, alias="DEFAULT_FREE_MINUTES")
     friends_package_minutes: int = Field(

@@ -1,6 +1,7 @@
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from app.config import get_settings
 from app.services.text_processing import (
     categorize_personal_note,
     create_acceptance_criteria,
@@ -205,15 +206,16 @@ def can_use_role_callback(
 
 
 def role_action_denial_message(profile_type: str) -> str:
+    support_contact = get_settings().support_contact_username
     if profile_type == "hr_assessor":
         return (
             "HR-функции доступны на тарифе Premium HR. "
-            "Откройте /buy, чтобы посмотреть тариф и инструкцию оплаты."
+            f"Откройте /buy или напишите {support_contact}, чтобы получить доступ."
         )
     if profile_type == "personal_notes":
         return (
             "Эта функция доступна на тарифе Personal. "
-            "Откройте /buy, чтобы посмотреть тариф и инструкцию оплаты."
+            f"Откройте /buy или напишите {support_contact}, чтобы получить доступ."
         )
     return "Эта функция недоступна на вашем тарифе."
 

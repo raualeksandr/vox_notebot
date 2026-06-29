@@ -42,7 +42,10 @@ def _payment_details_text(settings) -> str:
         details.append(f"Комментарий: {settings.sbp_payment_comment}")
 
     if not details:
-        return "Реквизиты оплаты уточните у администратора."
+        return (
+            "Реквизиты оплаты уточните у администратора: "
+            f"{settings.support_contact_username}"
+        )
 
     return "Реквизиты оплаты:\n" + "\n".join(details)
 
@@ -55,9 +58,12 @@ async def buy_command(message: Message) -> None:
     free_plan = get_plan("free")
     personal_plan = get_plan("personal")
     premium_plan = get_plan("premium")
+    support_contact = settings.support_contact_username
+
     await message.answer(
         "💳 Тарифы VoxNoteBot\n\n"
-        "Выберите тариф. После оплаты администратор вручную выдаст доступ по вашему Telegram ID.\n\n"
+        "Выберите тариф. После оплаты администратор вручную выдаст доступ "
+        "по вашему Telegram ID.\n\n"
         f"Ваш Telegram ID: {telegram_id_text}\n\n"
         "Free — 0 ₽\n"
         f"- {free_plan['minutes']} минут\n"
@@ -67,11 +73,10 @@ async def buy_command(message: Message) -> None:
         "- подходит, чтобы попробовать бота\n\n"
         f"Personal — {personal_plan['price']} ₽\n"
         f"- {personal_plan['minutes']} минут\n"
-        "- для личных голосовых заметок\n"
+        "- личные голосовые заметки и аудиофайлы\n"
         "- Очистить, Саммари, Задачи\n"
         "- Рефлексия\n"
-        "- План действий\n"
-        "- подходит для личных заметок, учёбы, бытовых задач и идей\n\n"
+        "- План действий\n\n"
         f"Premium HR — {premium_plan['price']} ₽\n"
         f"- {premium_plan['minutes']} минут\n"
         "- premium-транскрибация\n"
@@ -94,6 +99,7 @@ async def buy_command(message: Message) -> None:
         f"Ваш Telegram ID: {telegram_id_text}\n"
         "4. После проверки администратор выдаст тариф и пакет минут.\n\n"
         f"{_payment_details_text(settings)}\n\n"
+        f"Вопросы доступа, оплаты и тестового периода: {support_contact}\n\n"
         "Выберите тариф:",
         reply_markup=packages_keyboard(
             free_minutes=settings.default_free_minutes,
@@ -157,7 +163,8 @@ async def select_package(callback: CallbackQuery, session: AsyncSession) -> None
         return
     if package.price <= 0:
         await callback.answer(
-            "Цена пакета пока не настроена администратором.",
+            "Цена пакета пока не настроена. Напишите администратору: "
+            f"{settings.support_contact_username}.",
             show_alert=True,
         )
         return
@@ -179,7 +186,8 @@ async def select_package(callback: CallbackQuery, session: AsyncSession) -> None
             "- выбранный тариф\n"
             "- подтверждение оплаты\n"
             "- ваш Telegram ID\n"
-            f"Ваш Telegram ID: {callback.from_user.id}\n\n"
+            f"Ваш Telegram ID: {callback.from_user.id}\n"
+            f"Контакт администратора: {settings.support_contact_username}\n\n"
             "Затем нажмите кнопку 'Я оплатил'.",
             reply_markup=payment_claim_keyboard(payment.id),
         )
@@ -222,6 +230,7 @@ async def payment_claimed(callback: CallbackQuery, session: AsyncSession) -> Non
     await callback.answer()
     if callback.message:
         await callback.message.answer(
-            "Платёж отправлен на проверку. После подтверждения админом "
-            "минуты будут начислены."
+            "Платёж отправлен на проверку. После подтверждения администратором "
+            "минуты будут начислены. По вопросам оплаты и доступа: "
+            f"{settings.support_contact_username}."
         )

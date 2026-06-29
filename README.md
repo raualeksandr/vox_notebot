@@ -4,11 +4,11 @@
 
 `voice-notes-bot` is a Telegram bot for turning voice notes into structured text artifacts. It is designed as an MVP that runs on Railway, uses PostgreSQL for persistence, OpenAI for transcription and text processing, and manual payments for minute balance top-ups.
 
-The current MVP focus is HR assessors and personal voice notes: send a voice note, receive a transcript, then turn it into clean text, summaries, tasks, reflection, plans, or HR assessment materials.
+The current MVP focus is HR assessors and personal voice notes: send a voice note or supported audio file, receive a transcript, then turn it into clean text, summaries, tasks, reflection, plans, or HR assessment materials.
 
 ## What the bot does
 
-- Transcribes Telegram voice messages.
+- Transcribes Telegram voice messages and external audio files.
 - Tracks a minute balance and charges minutes only for successful transcription.
 - Provides text actions after transcription.
 - Shows actions according to `User.current_plan` and the existing user profile.
@@ -18,9 +18,22 @@ The current MVP focus is HR assessors and personal voice notes: send a voice not
 
 ## Main flows
 
-### Voice transcription
+### Audio transcription
 
-The user sends a Telegram voice message. The bot checks the user's balance, downloads the audio, transcribes it with the transcription model selected for the user's plan, saves the transcript, deducts rounded-up minutes only after success, and shows action buttons for the transcript.
+The user sends a Telegram voice message or an audio file. The bot checks the user's balance, downloads the audio, transcribes it with the transcription model selected for the user's effective plan, saves the transcript, deducts rounded-up minutes only after success, and shows action buttons for the transcript.
+
+Supported public formats:
+
+- mp3
+- m4a
+- wav
+- ogg
+
+The bot also accepts common Telegram audio MIME types such as `audio/mpeg`, `audio/mp4`, `audio/x-m4a`, `audio/wav`, `audio/ogg`, and `audio/webm`. File extension and MIME type are both checked because Telegram metadata can be inconsistent.
+
+The default audio file size limit is 25 MB, configurable with `MAX_AUDIO_FILE_SIZE_MB`.
+
+For `document` uploads, the file must look like audio by extension or MIME type. If Telegram does not provide duration for a document upload, the bot refuses safely and asks the user to send it as `audio` or use mp3/m4a; this avoids guessing billing minutes without ffmpeg/ffprobe.
 
 Free and Personal plans use fast transcription. Professional and Premium plans use premium transcription. Unknown plans fall back to the fast transcription model or the legacy `TRANSCRIPTION_MODEL` setting.
 
@@ -46,7 +59,7 @@ For the `personal_notes` profile, the post-transcription UI is intentionally sma
 
 ### Start and Plans
 
-`/start` shows the product description, main modes, and public tariffs. Users can send a voice message immediately; no setup questionnaire is required.
+`/start` shows the product description, main modes, supported audio inputs, support contact, and public tariffs. Users can send a voice message or audio file immediately; no setup questionnaire is required.
 
 Public tariffs shown in `/start` and `/buy`:
 
@@ -96,13 +109,18 @@ Profile-specific actions do not deduct additional minutes in the current MVP. HR
 
 ### Balance / manual payments
 
-`/balance` shows the user's Telegram ID, remaining minutes, and recent transactions. `/buy` is the manual sales/paywall screen: it shows Free, Personal, and Premium HR, explains what each tariff includes, shows the user's Telegram ID, and provides payment instructions. Professional is internal / legacy and is not a primary public option in `/buy`.
+`/balance` shows the user's Telegram ID, plan, effective plan when expired, plan expiration, remaining minutes, and recent transactions. `/buy` is the manual sales/paywall screen: it shows Free, Personal, and Premium HR, explains what each tariff includes, shows the user's Telegram ID, and provides payment instructions. Professional is internal / legacy and is not a primary public option in `/buy`.
 
-Users should send the selected tariff, payment confirmation, and their Telegram ID to the administrator, then claim payment with the `Я оплатил` button. If payment details are not configured, `/buy` tells the user to уточнить реквизиты у администратора. Admins can approve or reject the claim.
+Users should send the selected tariff, payment confirmation, and their Telegram ID to the administrator, then claim payment with the `Я оплатил` button. If payment details are not configured, `/buy` tells the user to contact the administrator. The default support/admin contact is `@raugestalt`, configurable with `SUPPORT_CONTACT_USERNAME`.
 
 Plan-gated upgrade messages point users to `/buy` so they can see the tariff and manual payment instructions.
 
 Package settings are configured through environment variables. The current MVP does not use Telegram Stars.
+
+Support and upload settings:
+
+- `SUPPORT_CONTACT_USERNAME` defaults to `@raugestalt`.
+- `MAX_AUDIO_FILE_SIZE_MB` defaults to `25`.
 
 ### Admin flow
 

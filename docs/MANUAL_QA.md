@@ -15,8 +15,12 @@ Expected result: commands respond without errors. `/start` shows the product des
 ## B. Start / Setup / Menu
 
 - Run `/start` and confirm it explains VoxNoteBot, Personal Notes, Premium HR, and tariffs.
+- Confirm `/start` says users can send voice notes or audio files.
+- Confirm `/start` shows support contact `@raugestalt` or the configured `SUPPORT_CONTACT_USERNAME`.
 - Confirm `/start` shows the user's Telegram ID.
+- Run `/help` and confirm it lists supported audio formats: mp3, m4a, wav, ogg.
 - Run `/setup` and confirm it says setup is no longer required.
+- Confirm `/setup` points users to `/buy` and the support contact.
 - Confirm `/setup` does not show questionnaire buttons.
 - Confirm the reply menu does not contain `⚙️ Настройка`.
 - Confirm the reply menu contains `🛒 Тарифы`.
@@ -29,6 +33,17 @@ Expected result: commands respond without errors. `/start` shows the product des
 - Confirm minutes are deducted only after successful transcription.
 - Confirm failed transcription does not deduct minutes.
 - Confirm the transcript is saved with `status="completed"` after success.
+
+## C2. External audio files
+
+- Send a small `.mp3` as Telegram audio and confirm transcription works.
+- Send a small `.m4a` as Telegram audio and confirm transcription works.
+- Send a small `.wav` as Telegram audio and confirm transcription works.
+- Send a small `.ogg` as Telegram audio and confirm transcription works.
+- Send an audio file as Telegram document. If Telegram provides no duration, confirm the bot refuses safely with a clear message and does not call OpenAI.
+- Send a non-audio document and confirm the bot says only mp3, m4a, wav, and ogg are supported.
+- Send an audio file larger than `MAX_AUDIO_FILE_SIZE_MB` and confirm the bot refuses before OpenAI is called.
+- Confirm successful external audio uses the same balance deduction, transcript saving, and action keyboard as voice notes.
 
 ## D. Universal actions
 
@@ -70,8 +85,8 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - Set legacy profile PM/BA, Founder, or Student/Researcher with Professional/Premium plan and confirm matching legacy role buttons are shown.
 - Confirm users do not see buttons for other profiles.
 - If testing callbacks manually, confirm a mismatched profile receives `Эта функция недоступна для вашего профиля.`
-- If testing direct HR callbacks manually without Premium, confirm the user receives `HR-функции доступны на тарифе Premium HR. Откройте /buy, чтобы посмотреть тариф и инструкцию оплаты.` and no OpenAI processing result is returned.
-- If testing Personal callbacks manually without Personal/Premium, confirm the user receives `Эта функция доступна на тарифе Personal. Откройте /buy, чтобы посмотреть тариф и инструкцию оплаты.`
+- If testing direct HR callbacks manually without Premium, confirm the user receives `HR-функции доступны на тарифе Premium HR. Откройте /buy или напишите @raugestalt, чтобы получить доступ.` and no OpenAI processing result is returned.
+- If testing Personal callbacks manually without Personal/Premium, confirm the user receives `Эта функция доступна на тарифе Personal. Откройте /buy или напишите @raugestalt, чтобы получить доступ.`
 
 ## G. History
 
@@ -94,7 +109,7 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - Confirm Professional is not shown as a primary public tariff.
 - Confirm `/buy` shows the user's Telegram ID.
 - Confirm `/buy` shows the payment instruction steps.
-- Confirm `/buy` shows configured SBP/payment details, or `Реквизиты оплаты уточните у администратора.` when details are not configured.
+- Confirm `/buy` shows configured SBP/payment details, or tells the user to contact `@raugestalt` / `SUPPORT_CONTACT_USERNAME` when details are not configured.
 - Confirm `/buy` tells the user to send the selected tariff, payment confirmation, and Telegram ID to the administrator.
 - Confirm paywall/upgrade messages direct the user to `/buy`.
 - Start a manual payment.

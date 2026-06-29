@@ -14,11 +14,11 @@ from app.bot.handlers.start import help_command
 router = Router(name="menu")
 
 
-@router.message(F.text == "🎙 Отправить голосовое")
-async def voice_hint(message: Message) -> None:
+@router.message(F.text.in_({"🎙 Отправить аудио", "🎙 Отправить голосовое"}))
+async def audio_hint(message: Message) -> None:
     await message.answer(
-        "Нажмите на микрофон в Telegram и отправьте голосовое сообщение. "
-        "Я превращу его в текст."
+        "Отправьте Telegram voice note или аудиофайл mp3, m4a, wav, ogg. "
+        "Я превращу запись в текст и покажу доступные действия."
     )
 
 

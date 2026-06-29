@@ -61,6 +61,60 @@ TEXT_PROCESSORS: dict[str, tuple[str | None, TextProcessor]] = {
     "next_steps": (None, suggest_next_steps),
 }
 
+SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".m4a", ".wav", ".ogg"}
+SUPPORTED_AUDIO_MIME_TYPES = {
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/mp4",
+    "audio/x-m4a",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/ogg",
+    "audio/webm",
+}
+
+
+def _is_supported_audio_file(
+    file_name: str | None,
+    mime_type: str | None,
+) -> bool:
+    extension = Path(file_name or "").suffix.lower()
+    normalized_mime = (mime_type or "").lower()
+    return (
+        extension in SUPPORTED_AUDIO_EXTENSIONS
+        or normalized_mime in SUPPORTED_AUDIO_MIME_TYPES
+    )
+
+
+def _audio_suffix(file_name: str | None, source_type: str) -> str:
+    extension = Path(file_name or "").suffix.lower()
+    if extension:
+        return extension
+    if source_type == "voice":
+        return ".ogg"
+    return ".audio"
+
+
+def _format_source_intro(
+    *,
+    source_type: str,
+    file_name: str | None,
+    duration_seconds: int | None,
+) -> str:
+    if source_type == "voice":
+        lines = ["🎙 Голосовое сообщение получено. Начинаю транскрибацию..."]
+    else:
+        display_name = file_name or "аудиофайл"
+        lines = [f"🎧 Аудиофайл получен: {display_name}"]
+        if source_type == "document":
+            lines.append("Файл распознан как аудиозапись.")
+        lines.append("Начинаю транскрибацию...")
+
+    if duration_seconds:
+        duration_minutes = max(1, math.ceil(duration_seconds / 60))
+        lines.append(f"Длительность: примерно {duration_minutes} мин.")
+    return "\n".join(lines)
+
 
 def _universal_callback_key(action: str) -> str:
     if action in {"clean", "summary", "tasks"}:
@@ -101,6 +155,15 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
     voice = message.voice
     if telegram_user is None or voice is None:
         return
+    await process_audio_input(
+        message,
+        session,
+        file_id=voice.file_id,
+        source_type="voice",
+        duration_seconds=voice.duration,
+        file_size=voice.file_size,
+    )
+    return
 
     settings = get_settings()
     user = await get_or_create_user(
@@ -223,6 +286,231 @@ async def voice_message(message: Message, session: AsyncSession) -> None:
         visible_universal_callback_keys = get_visible_universal_callback_keys(
             profile_type,
             get_effective_plan(user),
+        )
+        await message.answer(
+            "Что сделать с транскрипцией?",
+            reply_markup=transcription_actions_keyboard(
+                transcription.id,
+                visible_universal_callback_keys=visible_universal_callback_keys,
+                **role_keyboard_flags,
+            ),
+        )
+    finally:
+        if temporary_path is not None:
+            with suppress(OSError):
+                temporary_path.unlink(missing_ok=True)
+
+
+@router.message(F.audio)
+async def audio_message(message: Message, session: AsyncSession) -> None:
+    audio = message.audio
+    if audio is None:
+        return
+    await process_audio_input(
+        message,
+        session,
+        file_id=audio.file_id,
+        source_type="audio",
+        file_name=audio.file_name,
+        mime_type=audio.mime_type,
+        duration_seconds=audio.duration,
+        file_size=audio.file_size,
+    )
+
+
+@router.message(F.document)
+async def document_audio_message(message: Message, session: AsyncSession) -> None:
+    document = message.document
+    if document is None:
+        return
+    if not _is_supported_audio_file(document.file_name, document.mime_type):
+        await message.answer(
+            "Пока поддерживаются аудиофайлы mp3, m4a, wav и ogg. "
+            "Попробуйте экспортировать запись в один из этих форматов и отправить снова."
+        )
+        return
+    await process_audio_input(
+        message,
+        session,
+        file_id=document.file_id,
+        source_type="document",
+        file_name=document.file_name,
+        mime_type=document.mime_type,
+        duration_seconds=None,
+        file_size=document.file_size,
+    )
+
+
+async def process_audio_input(
+    message: Message,
+    session: AsyncSession,
+    *,
+    file_id: str,
+    source_type: str,
+    file_name: str | None = None,
+    mime_type: str | None = None,
+    duration_seconds: int | None = None,
+    file_size: int | None = None,
+) -> None:
+    telegram_user = message.from_user
+    if telegram_user is None:
+        return
+
+    settings = get_settings()
+    support_contact = settings.support_contact_username
+    if source_type != "voice" and not _is_supported_audio_file(file_name, mime_type):
+        await message.answer(
+            "Пока поддерживаются аудиофайлы mp3, m4a, wav и ogg. "
+            "Попробуйте экспортировать запись в один из этих форматов и отправить снова."
+        )
+        return
+
+    max_file_size_bytes = settings.max_audio_file_size_mb * 1024 * 1024
+    if file_size is not None and file_size > max_file_size_bytes:
+        await message.answer(
+            "Файл слишком большой. Сейчас поддерживаются аудиофайлы "
+            f"до {settings.max_audio_file_size_mb} МБ. Попробуйте сократить запись "
+            "или отправить файл меньшего размера."
+        )
+        return
+
+    if duration_seconds is None or duration_seconds <= 0:
+        await message.answer(
+            "Не удалось определить длительность аудиофайла. Попробуйте отправить его "
+            "как audio, а не как document, или используйте mp3/m4a. "
+            f"Если нужна помощь с доступом или файлом, напишите {support_contact}."
+        )
+        return
+
+    user = await get_or_create_user(
+        session,
+        telegram_id=telegram_user.id,
+        username=telegram_user.username,
+        first_name=telegram_user.first_name,
+        language_code=telegram_user.language_code,
+        admin_telegram_ids=settings.admin_telegram_ids,
+    )
+    if user.is_blocked:
+        await message.answer("Ваш аккаунт заблокирован.")
+        return
+
+    required_minutes = max(1, math.ceil(duration_seconds / 60))
+    balance = await get_or_create_balance(session, user.id)
+    if balance.minutes_remaining < required_minutes:
+        await message.answer(
+            "Недостаточно минут. "
+            f"Баланс: {_format_minutes(balance.minutes_remaining)} мин, "
+            f"аудио: {required_minutes} мин. Откройте /buy или напишите "
+            f"{support_contact}, чтобы продлить доступ."
+        )
+        return
+
+    if not settings.openai_api_key.strip():
+        await message.answer(
+            "Транскрибация временно недоступна. Напишите администратору: "
+            f"{support_contact}."
+        )
+        return
+
+    await message.answer(
+        _format_source_intro(
+            source_type=source_type,
+            file_name=file_name,
+            duration_seconds=duration_seconds,
+        )
+    )
+
+    temporary_path: Path | None = None
+    try:
+        user_profile = await get_user_profile(session, user.id)
+        profile_type = user_profile.profile_type if user_profile is not None else None
+        transcription_model = get_transcription_model_for_plan(
+            get_effective_plan(user),
+            profile_type,
+        )
+
+        with tempfile.NamedTemporaryFile(
+            suffix=_audio_suffix(file_name, source_type),
+            delete=False,
+        ) as temp_file:
+            temporary_path = Path(temp_file.name)
+
+        try:
+            await message.bot.download(file_id, destination=temporary_path)
+        except (TelegramAPIError, OSError):
+            logger.exception("Failed to download Telegram audio file")
+            await message.answer(
+                "Не удалось скачать аудио. Минуты не списаны. "
+                f"Попробуйте позже или напишите {support_contact}."
+            )
+            return
+
+        transcription = Transcription(
+            user_id=user.id,
+            audio_duration_seconds=duration_seconds,
+            transcript_text=None,
+            model=transcription_model,
+            status="pending",
+            cost_estimate=Decimal("0"),
+        )
+        session.add(transcription)
+        await session.flush()
+
+        try:
+            transcript_text = await transcribe_audio(
+                str(temporary_path),
+                model=transcription_model,
+            )
+        except OpenAIKeyNotConfiguredError:
+            transcription.status = "failed"
+            await session.flush()
+            await message.answer(
+                "Транскрибация временно недоступна. Напишите администратору: "
+                f"{support_contact}."
+            )
+            return
+        except (OpenAIError, OSError, RuntimeError):
+            logger.exception("OpenAI transcription failed")
+            transcription.status = "failed"
+            await session.flush()
+            await message.answer(
+                "Не удалось транскрибировать аудио. Минуты не списаны. "
+                f"Попробуйте позже или напишите {support_contact}."
+            )
+            return
+
+        try:
+            balance = await remove_minutes(session, user.id, required_minutes)
+        except ValueError:
+            transcription.status = "failed"
+            await session.flush()
+            await message.answer(
+                "Недостаточно минут для завершения операции. Минуты не списаны. "
+                f"Откройте /buy или напишите {support_contact}."
+            )
+            return
+
+        transcription.transcript_text = transcript_text
+        transcription.status = "completed"
+        await create_balance_transaction(
+            session,
+            user_id=user.id,
+            transaction_type="usage",
+            minutes_delta=-required_minutes,
+            reason=f"Транскрибация #{transcription.id}",
+        )
+        await session.flush()
+
+        await message.answer(
+            f"Готово. Списано {required_minutes} мин. "
+            f"Остаток: {_format_minutes(balance.minutes_remaining)} мин."
+        )
+        await answer_text_chunks(message, transcript_text)
+        plan_key = get_effective_plan(user)
+        role_keyboard_flags = role_action_keyboard_flags(profile_type, plan_key)
+        visible_universal_callback_keys = get_visible_universal_callback_keys(
+            profile_type,
+            plan_key,
         )
         await message.answer(
             "Что сделать с транскрипцией?",

@@ -13,37 +13,44 @@ from app.services.users import get_or_create_user
 router = Router(name="start")
 
 
-WELCOME_TEXT = (
-    "VoxNoteBot превращает голосовые заметки в аккуратный текст, саммари и "
-    "рабочие материалы.\n\n"
-    "Основные режимы:\n"
-    "- Личные заметки: очистка, саммари, задачи, рефлексия, план.\n"
-    "- HR / оценка персонала: HR-саммари, факты/интерпретации, люди, "
-    "компетенции, сильные стороны/зоны роста, рекомендации и HR-отчёт.\n\n"
-    "Тарифы:\n"
-    "Free - 0 ₽, 30 минут, fast-транскрибация, Очистить и Саммари.\n"
-    "Personal - 199 ₽, 300 минут, личные заметки: Очистить, Саммари, "
-    "Задачи, Рефлексия, План.\n"
-    "Premium HR - 1290 ₽, 1000 минут, premium-транскрибация, HR-функции "
-    "для оценщиков.\n\n"
-    "Отправьте голосовое сообщение, чтобы начать."
-)
+def _welcome_text(support_contact: str) -> str:
+    return (
+        "VoxNoteBot помогает превращать голосовые заметки и аудиофайлы "
+        "в структурированный текст.\n\n"
+        "Основной сценарий Premium HR — помощь оценщикам: HR-саммари, "
+        "факты и интерпретации, люди, компетенции, зоны роста, рекомендации "
+        "и черновик HR-отчёта.\n\n"
+        "Также есть Personal-режим для личных заметок: очистка текста, саммари, "
+        "задачи, рефлексия и план действий.\n\n"
+        "Можно отправить Telegram voice note или аудиофайл mp3, m4a, wav, ogg.\n\n"
+        "Тарифы:\n"
+        "Free — 0 ₽, 30 минут, fast-транскрибация, Очистить и Саммари.\n"
+        "Personal — 199 ₽, 300 минут, личные заметки.\n"
+        "Premium HR — 1290 ₽, 1000 минут, premium-транскрибация и HR-функции.\n\n"
+        "Тарифы и оплата: /buy\n"
+        f"Вопросы доступа, оплаты и trial: {support_contact}"
+    )
 
 
-HELP_TEXT = (
-    "Команды:\n"
-    "/start - описание продукта и тарифов\n"
-    "/help - помощь и список команд\n"
-    "/balance - баланс минут и последние операции\n"
-    "/history - последние транскрипции\n"
-    "/buy - тарифы и инструкция оплаты\n"
-    "/admin - меню администратора, только для админов\n\n"
-    "Доступ к функциям зависит от тарифа. Free даёт базовые действия, "
-    "Personal открывает личные заметки, Premium HR открывает HR-функции "
-    "для оценщиков.\n\n"
-    "Ваш Telegram ID отображается в /start, /buy и /balance. Он нужен для "
-    "ручной выдачи тарифа после оплаты."
-)
+def _help_text(support_contact: str) -> str:
+    return (
+        "Команды:\n"
+        "/start — описание продукта и тарифов\n"
+        "/help — помощь и список команд\n"
+        "/balance — тариф, минуты и срок доступа\n"
+        "/history — последние транскрипции\n"
+        "/buy — тарифы и инструкция оплаты\n"
+        "/admin — меню администратора, только для админов\n\n"
+        "Что можно отправлять:\n"
+        "- Telegram voice note\n"
+        "- аудиофайлы mp3, m4a, wav, ogg\n\n"
+        "Доступ к функциям зависит от тарифа. Free даёт базовые действия, "
+        "Personal открывает личные заметки, Premium HR открывает HR-функции "
+        "для оценщиков.\n\n"
+        "Ваш Telegram ID отображается в /start, /buy и /balance. "
+        "Он нужен для ручной выдачи тарифа после оплаты.\n\n"
+        f"Поддержка по оплате, trial и доступу: {support_contact}"
+    )
 
 
 @router.message(CommandStart())
@@ -63,11 +70,12 @@ async def start_command(message: Message, session: AsyncSession) -> None:
     )
     await get_or_create_balance(session, user.id)
 
-    await message.answer(WELCOME_TEXT)
+    await message.answer(_welcome_text(settings.support_contact_username))
     await message.answer(f"Ваш Telegram ID: {telegram_user.id}")
     if is_plan_expired(user):
         await message.answer(
-            "Ваш тариф истёк, доступен Free-режим. Откройте /buy для продления."
+            "Ваш тариф истёк, доступен Free-режим. "
+            f"Откройте /buy для продления или напишите {settings.support_contact_username}."
         )
     await message.answer(
         "Используйте кнопки меню ниже.",
@@ -77,13 +85,14 @@ async def start_command(message: Message, session: AsyncSession) -> None:
 
 @router.message(Command("help"))
 async def help_command(message: Message) -> None:
-    await message.answer(HELP_TEXT)
+    settings = get_settings()
+    await message.answer(_help_text(settings.support_contact_username))
     telegram_user = message.from_user
     await message.answer(
         "Меню команд:",
         reply_markup=user_menu_keyboard(
             is_admin=bool(
-                telegram_user and get_settings().is_admin(telegram_user.id)
+                telegram_user and settings.is_admin(telegram_user.id)
             )
         ),
     )

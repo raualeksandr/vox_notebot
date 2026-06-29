@@ -53,7 +53,10 @@ async def balance_command(message: Message, session: AsyncSession) -> None:
     if effective_plan != raw_plan:
         lines.append(f"effective_plan: {effective_plan}")
     if is_plan_expired(user):
-        lines.append("Тариф истёк. Сейчас доступен Free-режим.")
+        lines.append(
+            "Тариф истёк. Сейчас доступен Free-режим. "
+            f"Для продления откройте /buy или напишите {settings.support_contact_username}."
+        )
 
     lines.extend(
         [
