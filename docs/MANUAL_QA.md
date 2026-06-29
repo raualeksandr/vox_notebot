@@ -23,8 +23,9 @@ Expected result: commands respond without errors. `/start` shows the product des
 - Confirm `/setup` points users to `/buy` and the support contact.
 - Confirm `/setup` does not show questionnaire buttons.
 - Confirm the reply menu does not contain `⚙️ Настройка`.
-- Confirm the reply menu contains `🛒 Тарифы`.
-- Click `🛒 Тарифы` and confirm it opens the `/buy` tariff/package flow.
+- Confirm the reply menu contains `💳 Тарифы`.
+- Confirm the reply menu does not contain `Купить минуты`.
+- Click `💳 Тарифы` and confirm it opens the `/buy` tariff flow.
 
 ## C. Voice
 
@@ -106,6 +107,7 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - Send `/buy`.
 - Confirm `/buy` starts with `💳 Тарифы VoxNoteBot`.
 - Confirm `/buy` shows Free, Personal, and Premium HR as public tariffs.
+- Confirm `/buy` sells tariffs, not standalone minute packages.
 - Confirm Professional is not shown as a primary public tariff.
 - Confirm `/buy` shows the user's Telegram ID.
 - Confirm `/buy` shows the payment instruction steps.

@@ -2,7 +2,7 @@
 
 ## Project overview
 
-`voice-notes-bot` is a Telegram bot for turning voice notes into structured text artifacts. It is designed as an MVP that runs on Railway, uses PostgreSQL for persistence, OpenAI for transcription and text processing, and manual payments for minute balance top-ups.
+`voice-notes-bot` is a Telegram bot for turning voice notes into structured text artifacts. It is designed as an MVP that runs on Railway, uses PostgreSQL for persistence, OpenAI for transcription and text processing, and manual payments for tariff access.
 
 The current MVP focus is HR assessors and personal voice notes: send a voice note or supported audio file, receive a transcript, then turn it into clean text, summaries, tasks, reflection, plans, or HR assessment materials.
 
@@ -109,7 +109,7 @@ Profile-specific actions do not deduct additional minutes in the current MVP. HR
 
 ### Balance / manual payments
 
-`/balance` shows the user's Telegram ID, plan, effective plan when expired, plan expiration, remaining minutes, and recent transactions. `/buy` is the manual sales/paywall screen: it shows Free, Personal, and Premium HR, explains what each tariff includes, shows the user's Telegram ID, and provides payment instructions. Professional is internal / legacy and is not a primary public option in `/buy`.
+`/balance` shows the user's Telegram ID, plan, effective plan when expired, plan expiration, remaining minutes included in the tariff, and recent transactions. `/buy` is the manual sales/paywall screen: it shows Free, Personal, and Premium HR, explains what each tariff includes, shows the user's Telegram ID, and provides payment instructions. Professional is internal / legacy and is not a primary public option in `/buy`.
 
 Users should send the selected tariff, payment confirmation, and their Telegram ID to the administrator, then claim payment with the `Я оплатил` button. If payment details are not configured, `/buy` tells the user to contact the administrator. The default support/admin contact is `@raugestalt`, configurable with `SUPPORT_CONTACT_USERNAME`.
 

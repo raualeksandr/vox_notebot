@@ -32,12 +32,7 @@ async def balance_button(message: Message, session: AsyncSession) -> None:
     await balance_command(message, session)
 
 
-@router.message(F.text == "🛒 Купить минуты")
-async def buy_button(message: Message) -> None:
-    await buy_command(message)
-
-
-@router.message(F.text == "🛒 Тарифы")
+@router.message(F.text == "💳 Тарифы")
 async def plans_button(message: Message) -> None:
     await buy_command(message)
 

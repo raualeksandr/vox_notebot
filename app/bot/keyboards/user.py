@@ -33,8 +33,7 @@ def user_menu_keyboard(*, is_admin: bool = False) -> ReplyKeyboardMarkup:
             KeyboardButton(text="💰 Баланс"),
         ],
         [
-            KeyboardButton(text="🛒 Купить минуты"),
-            KeyboardButton(text="🛒 Тарифы"),
+            KeyboardButton(text="💳 Тарифы"),
         ],
         [
             KeyboardButton(text="❓ Помощь"),
