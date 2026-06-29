@@ -14,6 +14,7 @@ from app.bot.keyboards.admin import (
     admin_menu_keyboard,
     payment_review_keyboard,
     plan_selection_keyboard,
+    user_card_keyboard,
 )
 from app.config import get_settings
 from app.db.models import Payment, Transcription, User
@@ -92,6 +93,52 @@ async def _format_user_plan_summary(session: AsyncSession, user: User) -> str:
         f"profile_type: {profile_type}\n"
         f"balance minutes: {remaining}"
         f"{expired_text}"
+    )
+
+
+def _format_datetime(value) -> str:
+    if value is None:
+        return "-"
+    return value.strftime("%Y-%m-%d %H:%M")
+
+
+async def _format_user_card(session: AsyncSession, user: User) -> str:
+    profile = await get_user_profile(session, user.id)
+    balance = await get_balance(session, user.id)
+    profile_type = profile.profile_type if profile and profile.profile_type else "-"
+    remaining = balance.minutes_remaining if balance else Decimal("0")
+    raw_plan = user.current_plan or "free"
+    effective_plan = get_effective_plan(user)
+    expired = is_plan_expired(user)
+    plan_status = "истёк" if expired else "активен"
+    username = f"@{user.username}" if user.username else "-"
+    transcription_count = await session.scalar(
+        select(func.count(Transcription.id)).where(Transcription.user_id == user.id)
+    ) or 0
+    last_activity = await session.scalar(
+        select(func.max(Transcription.created_at)).where(Transcription.user_id == user.id)
+    )
+    warning = (
+        "\n\n⚠️ Тариф истёк, сейчас действует Free-доступ."
+        if effective_plan != raw_plan
+        else ""
+    )
+
+    return (
+        "👤 Пользователь\n\n"
+        f"Telegram ID: {user.telegram_id}\n"
+        f"Username: {username}\n"
+        f"Имя: {user.first_name or '-'}\n"
+        f"Текущий тариф: {raw_plan}\n"
+        f"Активный доступ: {effective_plan}\n"
+        f"Статус тарифа: {plan_status}\n"
+        f"Доступ до: {get_plan_expiration_text(user)}\n"
+        f"Profile type: {profile_type}\n"
+        f"Баланс минут: {remaining}\n"
+        f"Транскрибаций: {transcription_count}\n"
+        f"Дата регистрации: {_format_datetime(user.created_at)}\n"
+        f"Последняя активность: {_format_datetime(last_activity)}"
+        f"{warning}"
     )
 
 
@@ -254,7 +301,7 @@ async def request_user_lookup(
     await state.update_data(lookup_mode=callback.data)
     await callback.answer()
     if callback.message:
-        await callback.message.answer("Введите telegram_id или @username пользователя.")
+        await callback.message.answer("Введите Telegram ID или username пользователя.")
 
 
 @router.message(AdminStates.lookup_user)
@@ -270,19 +317,15 @@ async def show_user_lookup(
 
     user = await _resolve_user(session, message.text or "")
     if user is None:
-        await message.answer("Пользователь не найден.")
+        await message.answer(
+            "Пользователь не найден. Попросите его сначала открыть бота через /start, "
+            "затем прислать Telegram ID."
+        )
         return
 
-    balance = await get_balance(session, user.id)
-    remaining = balance.minutes_remaining if balance else Decimal("0")
     await message.answer(
-        f"User ID: {user.id}\n"
-        f"Telegram ID: {user.telegram_id}\n"
-        f"Username: @{user.username if user.username else '-'}\n"
-        f"Имя: {user.first_name or '-'}\n"
-        f"Роль: {user.role}\n"
-        f"Заблокирован: {'да' if user.is_blocked else 'нет'}\n"
-        f"Баланс: {remaining} минут"
+        await _format_user_card(session, user),
+        reply_markup=user_card_keyboard(user.id),
     )
     await state.clear()
 
@@ -388,6 +431,146 @@ async def receive_premium_trial_target(
         + "\n\n"
         + await _format_user_plan_summary(session, user)
     )
+
+
+@router.callback_query(F.data == "admin:back")
+async def back_to_admin_menu(callback: CallbackQuery) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "Панель администратора:",
+            reply_markup=admin_menu_keyboard(),
+        )
+
+
+def _callback_user_id(callback: CallbackQuery) -> int | None:
+    user_id_text = (callback.data or "").rsplit(":", maxsplit=1)[-1]
+    if not user_id_text.isdigit():
+        return None
+    return int(user_id_text)
+
+
+@router.callback_query(F.data.startswith("admin:user:refresh:"))
+async def refresh_user_card(
+    callback: CallbackQuery,
+    session: AsyncSession,
+) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    user_id = _callback_user_id(callback)
+    user = await get_user_by_id(session, user_id) if user_id is not None else None
+    if user is None:
+        await callback.answer("Пользователь не найден.", show_alert=True)
+        return
+
+    await callback.answer("Карточка обновлена.")
+    if callback.message:
+        await callback.message.answer(
+            await _format_user_card(session, user),
+            reply_markup=user_card_keyboard(user.id),
+        )
+
+
+@router.callback_query(F.data.startswith("admin:user:trial:"))
+async def grant_premium_trial_from_card(
+    callback: CallbackQuery,
+    session: AsyncSession,
+) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    user_id = _callback_user_id(callback)
+    user = await get_user_by_id(session, user_id) if user_id is not None else None
+    if user is None:
+        await callback.answer("Пользователь не найден.", show_alert=True)
+        return
+
+    old_profile = await get_user_profile(session, user.id)
+    summary = await apply_plan_to_user(
+        session,
+        user,
+        old_profile,
+        "premium",
+        trial=True,
+    )
+    minutes_delta = summary["new_balance"] - summary["old_balance"]
+    await create_balance_transaction(
+        session,
+        user_id=user.id,
+        transaction_type="plan_assignment",
+        minutes_delta=minutes_delta,
+        reason="Premium HR Trial assignment",
+        admin_id=callback.from_user.id,
+    )
+    await session.flush()
+
+    await callback.answer("Premium HR Trial выдан.")
+    if callback.message:
+        await callback.message.edit_text(
+            await _format_user_card(session, user),
+            reply_markup=user_card_keyboard(user.id),
+        )
+
+
+@router.callback_query(F.data.startswith("admin:user:change_plan:"))
+async def change_plan_from_card(
+    callback: CallbackQuery,
+    session: AsyncSession,
+) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    user_id = _callback_user_id(callback)
+    user = await get_user_by_id(session, user_id) if user_id is not None else None
+    if user is None:
+        await callback.answer("Пользователь не найден.", show_alert=True)
+        return
+
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            await _format_user_plan_summary(session, user),
+            reply_markup=plan_selection_keyboard(user.id),
+        )
+
+
+@router.callback_query(
+    F.data.startswith("admin:user:add_minutes:")
+    | F.data.startswith("admin:user:remove_minutes:")
+)
+async def manual_minutes_from_card(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+) -> None:
+    if not _is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    user_id = _callback_user_id(callback)
+    user = await get_user_by_id(session, user_id) if user_id is not None else None
+    if user is None:
+        await callback.answer("Пользователь не найден.", show_alert=True)
+        return
+
+    operation = "add" if ":add_minutes:" in (callback.data or "") else "remove"
+    await state.set_state(AdminStates.adjustment_minutes)
+    await state.update_data(target_user_id=user.id, operation=operation)
+    await callback.answer()
+    if callback.message:
+        action_text = "добавить" if operation == "add" else "списать"
+        await callback.message.answer(
+            f"Введите количество минут, которое нужно {action_text} пользователю "
+            f"{user.telegram_id}."
+        )
 
 
 @router.callback_query(F.data.startswith("admin:plan:set:"))

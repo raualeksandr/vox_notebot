@@ -124,7 +124,7 @@ Support and upload settings:
 
 ### Admin flow
 
-Admins are configured with `ADMIN_TELEGRAM_IDS`. Admin tools include payment review, approve/reject flows, manual minute adjustments, Premium HR Trial grants, and basic stats.
+Admins are configured with `ADMIN_TELEGRAM_IDS`. Admin tools include payment review, approve/reject flows, user search, user cards, manual minute adjustments, Premium HR Trial grants, and basic stats.
 The primary access-management action is assigning a plan. When an admin changes a user's plan, the bot sets `User.current_plan`, sets the remaining balance to the plan package minutes, and applies the default profile where appropriate:
 
 - Free: sets 30 remaining minutes; creates `personal_notes` only if the user has no profile.
@@ -134,6 +134,21 @@ The primary access-management action is assigning a plan. When an admin changes 
 - Professional: sets 600 remaining minutes, a 60-day expiration, and leaves the existing legacy profile unchanged.
 
 Manual add/remove minutes remains available as an admin-only secondary operation.
+
+### Admin user card
+
+Admins can open `/admin` → `🔎 Найти пользователя` and search by Telegram ID, `@username`, or username without `@`. Username search depends on the user having opened the bot so `User.username` is stored in the database; Telegram ID is the most reliable support identifier.
+
+The user card shows Telegram ID, username, first name, current plan, effective plan, expiration status, profile type, minute balance, transcription count, registration date, and latest transcription activity. If a paid plan has expired, the card warns that Free access is currently effective.
+
+Card actions:
+
+- `🎁 Выдать Premium HR Trial`
+- `💳 Сменить тариф`
+- `➕ Добавить минуты вручную`
+- `➖ Списать минуты вручную`
+- `🔄 Обновить карточку`
+- `⬅️ Назад в админку`
 
 ## Supported profiles
 

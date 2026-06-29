@@ -120,6 +120,14 @@ Expected result: each action returns a role-specific artifact and does not deduc
 - As admin, reject another payment.
 - As admin, open `/admin`, click `💳 Сменить тариф`, enter a user's Telegram ID, and switch plans.
 - Confirm plan assignment reports old/new plan and old/new balance.
+- As admin, open `/admin`, click `🔎 Найти пользователя`, and search by Telegram ID.
+- Confirm the user card shows current plan, effective plan, plan status, access expiration, profile type, balance, transcription count, registration date, and latest activity.
+- Confirm username search works for users whose username is stored after `/start`; otherwise use Telegram ID.
+- From the user card, click `🎁 Выдать Premium HR Trial` and confirm the card refreshes to Premium HR, `hr_assessor`, 1000 minutes, and about 7 days of access.
+- From the user card, click `🔄 Обновить карточку` and confirm the data refreshes.
+- From the user card, click `💳 Сменить тариф` and confirm the existing plan selection flow opens for that user.
+- From the user card, click manual add/remove minute buttons and confirm the existing manual minute flow opens for that user.
+- Confirm non-admin users cannot open user cards or use card callbacks.
 - Confirm Free sets balance to 30 minutes and creates `personal_notes` only when no profile exists.
 - Confirm Personal sets balance to 300 minutes, `profile_type="personal_notes"`, and `plan_expires_at` about 60 days ahead.
 - Confirm Premium HR sets balance to 1000 minutes, `profile_type="hr_assessor"`, and `plan_expires_at` about 60 days ahead.
