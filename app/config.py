@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     text_model_hr: str = Field(default="gpt-5.4", alias="TEXT_MODEL_HR")
     text_model_legacy: str = Field(default="gpt-5.4-mini", alias="TEXT_MODEL_LEGACY")
 
+    transcription_retention_days: int = Field(
+        default=90,
+        alias="TRANSCRIPTION_RETENTION_DAYS",
+    )
+
     @field_validator("admin_telegram_ids", mode="before")
     @classmethod
     def parse_admin_telegram_ids(cls, value: object) -> object:

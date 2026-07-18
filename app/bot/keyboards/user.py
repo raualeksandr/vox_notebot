@@ -155,6 +155,15 @@ def _visible_role_callback_keys(profile_type: str) -> set[str] | None:
     return None
 
 
+def _delete_row(transcription_id: int) -> list[InlineKeyboardButton]:
+    return [
+        InlineKeyboardButton(
+            text="🗑 Удалить запись",
+            callback_data=f"txn_del:{transcription_id}",
+        )
+    ]
+
+
 def _history_text_row(transcription_id: int) -> list[InlineKeyboardButton]:
     return [
         InlineKeyboardButton(
@@ -256,6 +265,7 @@ def transcription_actions_keyboard(
         include_student_researcher_actions=include_student_researcher_actions,
         include_personal_notes_actions=include_personal_notes_actions,
     )
+    inline_keyboard.append(_delete_row(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,
@@ -285,6 +295,7 @@ def history_transcription_keyboard(
         include_student_researcher_actions=include_student_researcher_actions,
         include_personal_notes_actions=include_personal_notes_actions,
     )
+    inline_keyboard.append(_delete_row(transcription_id))
 
     return InlineKeyboardMarkup(
         inline_keyboard=inline_keyboard,

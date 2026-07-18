@@ -394,6 +394,13 @@ async def process_audio_input(
         await message.answer("Ваш аккаунт заблокирован.")
         return
 
+    if user.consent_accepted_at is None:
+        await message.answer(
+            "Прежде чем начать, подтвердите согласие на обработку данных — "
+            "отправьте /start."
+        )
+        return
+
     required_minutes = max(1, math.ceil(duration_seconds / 60))
     balance = await get_or_create_balance(session, user.id)
     if balance.minutes_remaining < required_minutes:

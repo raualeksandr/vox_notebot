@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Transcription
@@ -64,3 +64,18 @@ async def get_user_transcription(
         )
     )
     return result.scalar_one_or_none()
+
+
+async def delete_user_transcription(
+    session: AsyncSession,
+    transcription_id: int,
+    user_id: int,
+) -> bool:
+    """Удаляет транскрипцию, если она принадлежит пользователю."""
+    result = await session.execute(
+        delete(Transcription).where(
+            Transcription.id == transcription_id,
+            Transcription.user_id == user_id,
+        )
+    )
+    return (result.rowcount or 0) > 0

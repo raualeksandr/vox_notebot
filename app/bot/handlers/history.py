@@ -1,6 +1,8 @@
 import math
+from contextlib import suppress
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +16,7 @@ from app.bot.role_actions import (
 from app.config import get_settings
 from app.services.plans import get_effective_plan
 from app.services.transcription import (
+    delete_user_transcription,
     get_recent_transcriptions,
     get_user_transcription,
 )
@@ -109,4 +112,34 @@ async def show_transcription_text(
         callback.bot,
         callback.from_user.id,
         transcription.transcript_text,
+    )
+
+
+@router.callback_query(F.data.startswith("txn_del:"))
+async def delete_transcription_callback(
+    callback: CallbackQuery,
+    session: AsyncSession,
+) -> None:
+    parts = (callback.data or "").split(":")
+    if len(parts) != 2 or not parts[1].isdigit():
+        await callback.answer("Запись не найдена.")
+        return
+
+    transcription_id = int(parts[1])
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if user is None:
+        await callback.answer("Запись не найдена.")
+        return
+
+    deleted = await delete_user_transcription(session, transcription_id, user.id)
+    if not deleted:
+        await callback.answer("Запись не найдена.")
+        return
+
+    await callback.answer("Запись удалена.")
+    with suppress(TelegramAPIError):
+        await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.bot.send_message(
+        callback.from_user.id,
+        "🗑 Транскрипция удалена.",
     )

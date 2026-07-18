@@ -24,6 +24,9 @@ class User(Base):
     plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     transcription_quality: Mapped[str] = mapped_column(String(32), default="fast")
     onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    consent_accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
